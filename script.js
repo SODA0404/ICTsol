@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const API_KEY = '$2a$10$.Xv9dQJFAEDIV5pO50uXfeAWRhkkHcN94Rwc.0fBMgkNy8iauclHu'; // 自分のAPIキー
+    const BIN_ID = '68e353e1d0ea881f4096e4f5'; // 自分のBin ID
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/68e353e1d0ea881f4096e4f5`;
 
     // --- 要素取得 ---
     const containers = {
@@ -33,30 +36,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- アプリケーションの状態管理 ---
     let currentUser = null;
-    let currentView = 'week'; // 'day', 'week', 'month'
-    let currentDate = new Date(); // 表示の基準となる日付
+    let currentView = 'week';
+    let currentDate = new Date();
 
     // --- ユーティリティ ---
-    const getUsersData = () => JSON.parse(localStorage.getItem('scheduleAppUsers') || '{}');
-    const saveUsersData = (data) => localStorage.setItem('scheduleAppUsers', JSON.stringify(data));
     const showScreen = (screen) => Object.values(containers).forEach(c => c.classList.toggle('hidden', c !== screen));
     const formatDate = (date, options) => new Intl.DateTimeFormat('ja-JP', options).format(date);
+    
+    // --- データ保存・読み込み (JSONBin.io) ---
+    async function getUsersData() {
+        try {
+            const response = await fetch(`${JSONBIN_URL}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            if (response.status === 404) {
+                return {}; // Binが空か存在しない場合は空のオブジェクトを返す
+            }
+            if (!response.ok) throw new Error('データの読み込みに失敗しました。');
+            const data = await response.json();
+            // Binが空の場合、recordが{}ではなく空文字列""になることがあるため、その対策
+            return (typeof data.record === 'object' && data.record !== null) ? data.record : {};
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+            return {};
+        }
+    }
+
+    async function saveUsersData(data) {
+        try {
+            const response = await fetch(JSONBIN_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error('データの保存に失敗しました。');
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        }
+    }
 
     // --- 主要なビュー更新関数 ---
-    function updateView() {
+    async function updateView() {
         if (!currentUser) return;
-        const usersData = getUsersData();
+        const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
         
-        // ▼▼▼ 修正 ▼▼▼
-        // アクティブなビューボタンを更新（より安全な方法に変更）
         buttons.dayView.classList.remove('active');
         buttons.weekView.classList.remove('active');
         buttons.monthView.classList.remove('active');
         buttons[`${currentView}View`].classList.add('active');
-        // ▲▲▲ 修正 ▲▲▲
 
-        // ビューに応じて描画関数を呼び出し
         if (currentView === 'day') renderDayView(schedules);
         else if (currentView === 'week') renderWeekView(schedules);
         else if (currentView === 'month') renderMonthView(schedules);
@@ -69,12 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'day-view';
-
         const dayElement = createDayElement(currentDate);
         const daySchedules = schedules
             .filter(s => s.date === currentDate.toISOString().split('T')[0])
             .sort((a,b) => a.time.localeCompare(b.time));
-
         daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
         scheduleElements.calendarView.appendChild(dayElement.element);
     }
@@ -84,14 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayOfWeek = startOfWeek.getDay();
         const mondayOffset = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
         startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
-        
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
-
         scheduleElements.calendarTitle.textContent = `${formatDate(startOfWeek, {month:'long', day:'numeric'})} - ${formatDate(endOfWeek, {month:'long', day:'numeric'})}`;
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'week-view';
-
         for (let i = 0; i < 7; i++) {
             const day = new Date(startOfWeek);
             day.setDate(startOfWeek.getDate() + i);
@@ -99,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const daySchedules = schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
                 .sort((a, b) => a.time.localeCompare(b.time));
-            
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -109,28 +137,21 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long' });
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'month-view';
-        
         const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         const dayOfWeek = firstDayOfMonth.getDay();
         const mondayOffset = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
-
         const startDate = new Date(firstDayOfMonth);
         startDate.setDate(firstDayOfMonth.getDate() - mondayOffset);
-
-        for (let i = 0; i < 42; i++) { // 6週間分描画
+        for (let i = 0; i < 42; i++) {
             const day = new Date(startDate);
             day.setDate(startDate.getDate() + i);
             const dayElement = createDayElement(day);
-
             if (day.getMonth() !== currentDate.getMonth()) {
                 dayElement.element.classList.add('other-month');
             }
-
             const daySchedules = schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
                 .sort((a,b) => a.time.localeCompare(b.time));
-
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -156,14 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const element = document.createElement('div');
         element.classList.add('calendar-day');
         if (date.toDateString() === new Date().toDateString()) element.classList.add('today');
-        
         const header = document.createElement('div');
         header.classList.add('calendar-day-header');
         header.textContent = formatDate(date, currentView === 'month' ? {day:'numeric'} : {month:'numeric', day:'numeric', weekday:'short'});
-        
         const body = document.createElement('div');
         body.classList.add('calendar-day-body');
-        
         element.append(header, body);
         return { element, body };
     }
@@ -181,25 +199,25 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.showRegister.addEventListener('click', () => showScreen(containers.register));
         buttons.back.forEach(btn => btn.addEventListener('click', () => showScreen(containers.welcome)));
 
-        forms.register.addEventListener('submit', (e) => {
+        forms.register.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = forms.register.querySelector('input[type="text"]').value.trim();
             const password = forms.register.querySelector('input[type="password"]').value.trim();
             if (!username || !password) return alert('全て入力してください。');
-            const usersData = getUsersData();
+            const usersData = await getUsersData();
             if (usersData[username]) return alert('そのユーザー名は既に使用されています。');
             usersData[username] = { password, schedules: [] };
-            saveUsersData(usersData);
-            loginUser(username);
+            await saveUsersData(usersData);
+            await loginUser(username);
         });
 
-        forms.login.addEventListener('submit', (e) => {
+        forms.login.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = forms.login.querySelector('input[type="text"]').value.trim();
             const password = forms.login.querySelector('input[type="password"]').value.trim();
-            const usersData = getUsersData();
+            const usersData = await getUsersData();
             if (usersData[username]?.password === password) {
-                loginUser(username);
+                await loginUser(username);
             } else {
                 alert('ユーザー名またはパスワードが間違っています。');
             }
@@ -210,39 +228,40 @@ document.addEventListener('DOMContentLoaded', () => {
             showScreen(containers.welcome);
         });
 
-        forms.schedule.addEventListener('submit', (e) => {
+        forms.schedule.addEventListener('submit', async (e) => {
             e.preventDefault();
             const date = forms.schedule.querySelector('input[type="date"]').value;
             const time = forms.schedule.querySelector('input[type="time"]').value;
             const text = forms.schedule.querySelector('input[type="text"]').value.trim();
             if(!date || !time || !text) return alert('全て入力してください。');
-
-            const usersData = getUsersData();
+            const usersData = await getUsersData();
+            if (!usersData[currentUser]) { //念のためユーザーデータが存在するか確認
+                usersData[currentUser] = { password: '', schedules: [] };
+            }
             usersData[currentUser].schedules.push({ date, time, text });
-            saveUsersData(usersData);
+            await saveUsersData(usersData);
             forms.schedule.reset();
-            updateView();
+            await updateView();
         });
         
-        scheduleElements.list.addEventListener('click', (e) => {
+        scheduleElements.list.addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-btn')) {
                 const content = e.target.previousElementSibling.textContent;
                 const match = content.match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2})\s-\s(.+)/);
                 if (match) {
                     const [_, date, time, text] = match.map(item => item.trim());
-                    const usersData = getUsersData();
+                    const usersData = await getUsersData();
                     const schedules = usersData[currentUser].schedules;
                     const index = schedules.findIndex(s => s.date === date && s.time === time && s.text === text);
                     if (index > -1) {
                         schedules.splice(index, 1);
-                        saveUsersData(usersData);
-                        updateView();
+                        await saveUsersData(usersData);
+                        await updateView();
                     }
                 }
             }
         });
 
-        // --- ナビゲーションとビュー切替のリスナー ---
         buttons.today.addEventListener('click', () => {
             currentDate = new Date();
             updateView();
@@ -267,14 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
     }
 
-    function loginUser(username) {
+    async function loginUser(username) {
         currentUser = username;
         scheduleElements.currentUserSpan.textContent = currentUser;
         forms.register.reset();
         forms.login.reset();
         currentDate = new Date();
         currentView = 'week';
-        updateView();
+        await updateView();
         showScreen(containers.schedule);
     }
     
