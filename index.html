@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルスケジュールアプリ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="register-container" class="container">
+        <h1>👤 ユーザー登録</h1>
+        <form id="register-form">
+            <input type="text" id="username" placeholder="ユーザー名" required>
+            <input type="password" id="password" placeholder="パスワード" required>
+            <button type="submit">登録して開始</button>
+        </form>
+    </div>
+
+    <div id="schedule-container" class="container hidden">
+        <h1>🗓️ スケジュール管理</h1>
+
+        <form id="schedule-form" class="schedule-form">
+            <input type="date" id="schedule-date" required>
+            <input type="time" id="schedule-time" required>
+            <input type="text" id="schedule-text" placeholder="予定を入力..." required>
+            <button type="submit">追加</button>
+        </form>
+
+        <h2>📝 予定リスト</h2>
+        <ul id="schedule-list">
+            </ul>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
