@@ -1,4 +1,11 @@
 /* --- CSS（デザイン） --- */
+:root {
+    --primary-color: #3498db;
+    --danger-color: #e74c3c;
+    --light-gray-color: #ecf0f1;
+    --border-color: #ddd;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     line-height: 1.6;
@@ -9,7 +16,7 @@ body {
 }
 
 .container {
-    max-width: 600px;
+    max-width: 1100px; /* カレンダー表示のため幅を広げます */
     margin: 0 auto;
     background-color: #fff;
     padding: 25px;
@@ -17,120 +24,114 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
+h1, h2 {
     text-align: center;
     color: #2c3e50;
+    margin-top: 0;
 }
 
-/* --- ▼▼▼ 追加したスタイル ▼▼▼ --- */
+.hidden { display: none; }
 
-/* 要素を非表示にするための汎用クラス */
-.hidden {
-    display: none;
+/* --- ログイン・登録関連 --- */
+.welcome-buttons, #register-form, #login-form {
+    max-width: 400px;
+    margin: 25px auto 0;
 }
-
-/* ユーザー登録フォーム */
-#register-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
+.welcome-buttons { display: flex; justify-content: center; gap: 20px; }
+#register-form, #login-form { display: flex; flex-direction: column; gap: 15px; }
+.welcome-buttons button, #register-form input, #login-form input, #register-form button, #login-form button {
+    padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid var(--border-color);
 }
-
-#register-form input {
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+#register-form button, #login-form button {
+    color: white; border: none; cursor: pointer; transition: background-color 0.3s;
 }
+#register-form button[type="submit"], #login-form button[type="submit"] { background-color: #2ecc71; }
+.back-btn { background-color: #95a5a6; }
 
-#register-form button {
-    padding: 12px 15px;
-    background-color: #2ecc71; /* ボタンの色を緑に */
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
+/* --- スケジュール管理画面ヘッダー --- */
+.schedule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.schedule-header h1 { margin: 0; }
+#logout-btn { background-color: var(--danger-color); color: white; border:none; padding: 8px 12px; border-radius: 4px; cursor:pointer; }
 
-#register-form button:hover {
-    background-color: #27ae60;
-}
-
-/* --- ▲▲▲ 追加したスタイル ▲▲▲ --- */
-
-
-/* 予定入力フォーム */
-.schedule-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 25px;
-}
-
-.schedule-form input {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.schedule-form input[type="date"],
-.schedule-form input[type="time"] {
-    flex-basis: 150px;
-}
-
-.schedule-form input[type="text"] {
-    flex-grow: 1; /* 残りのスペースを埋める */
-}
-
-.schedule-form button {
-    padding: 10px 15px;
-    background-color: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.schedule-form button:hover {
-    background-color: #2980b9;
-}
-
-/* 予定リスト */
-#schedule-list {
-    list-style: none;
-    padding: 0;
-}
-
-#schedule-list li {
-    background-color: #ecf0f1;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 4px;
+/* --- ▼▼▼ カレンダーコントロールパネル ▼▼▼ --- */
+#calendar-container { margin-top: 20px; margin-bottom: 30px; }
+.calendar-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
-
-.schedule-item-content {
-    font-weight: 500;
-}
-
-.delete-btn {
-    background-color: #e74c3c;
-    color: white;
-    border: none;
+.calendar-controls h2 { margin: 0; font-size: 1.2em; }
+.calendar-nav, .view-switcher { display: flex; gap: 5px; }
+.calendar-nav button, .view-switcher button {
     padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    background-color: #f9f9f9;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.3s;
+}
+.view-switcher button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
 }
 
-.delete-btn:hover {
-    background-color: #c0392b;
+/* --- ▼▼▼ 共通カレンダースタイル ▼▼▼ --- */
+#calendar-view { border-top: 1px solid var(--border-color); }
+.calendar-day {
+    border-left: 1px solid var(--border-color);
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+.calendar-day:last-child { border-right: 1px solid var(--border-color); }
+.calendar-day-header { padding: 5px; font-weight: bold; text-align: center; }
+.calendar-day-body { flex-grow: 1; overflow-y: auto; font-size: 0.8em; padding: 3px; }
+.calendar-schedule-item {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    padding: 3px 5px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.today { background-color: #fdfae5; }
+
+/* --- 週ビュー --- */
+#calendar-view.week-view { display: grid; grid-template-columns: repeat(7, 1fr); }
+.week-view .calendar-day { border-bottom: 1px solid var(--border-color); min-height: 120px; }
+.week-view .calendar-day-header { border-bottom: 1px solid #eee; }
+
+/* --- 月ビュー --- */
+#calendar-view.month-view { display: grid; grid-template-columns: repeat(7, 1fr); }
+.month-view .calendar-day { border-bottom: 1px solid var(--border-color); min-height: 100px; }
+.month-view .calendar-day-header { font-size: 0.9em; text-align: left; border-bottom: none; }
+.month-view .other-month { background-color: #f7f7f7; color: #ccc; }
+
+/* --- 日ビュー --- */
+#calendar-view.day-view { display: block; }
+.day-view .calendar-day { border-bottom: 1px solid var(--border-color); min-height: 300px; }
+.day-view .calendar-day-header { font-size: 1.2em; border-bottom: 1px solid #eee; }
+.day-view .calendar-schedule-item { font-size: 1.1em; }
+
+/* --- 予定入力フォーム & リスト --- */
+.schedule-form { display: flex; flex-wrap: wrap; gap: 10px; margin: 25px 0; border-top: 1px solid #eee; padding-top: 25px; }
+.schedule-form input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+.schedule-form input[type="text"] { flex-grow: 1; }
+.schedule-form button { padding: 10px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+#schedule-list { list-style: none; padding: 0; }
+#schedule-list li { background-color: var(--light-gray-color); padding: 15px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+.delete-btn { background-color: var(--danger-color); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+
+/* 小さな画面への対応 */
+@media (max-width: 768px) {
+    .calendar-controls { flex-direction: column; align-items: stretch; }
+    .calendar-controls h2 { text-align: center; margin-bottom: 10px; }
+    #calendar-view.week-view, #calendar-view.month-view { display: block; }
+    .week-view .calendar-day, .month-view .calendar-day { border-bottom: 2px solid #eee; min-height: 80px; }
+    .month-view .other-month { display: none; }
 }

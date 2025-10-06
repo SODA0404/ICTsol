@@ -8,17 +8,58 @@
 </head>
 <body>
 
-    <div id="register-container" class="container">
-        <h1>👤 ユーザー登録</h1>
+    <div id="welcome-container" class="container">
+        <h1>ようこそ！</h1>
+        <div class="welcome-buttons">
+            <button id="show-login-btn">ログイン</button>
+            <button id="show-register-btn">新規登録</button>
+        </div>
+    </div>
+
+    <div id="register-container" class="container hidden">
+        <h1>👤 新規登録</h1>
         <form id="register-form">
-            <input type="text" id="username" placeholder="ユーザー名" required>
-            <input type="password" id="password" placeholder="パスワード" required>
+            <input type="text" id="register-username" placeholder="ユーザー名" required>
+            <input type="password" id="register-password" placeholder="パスワード" required>
             <button type="submit">登録して開始</button>
+            <button type="button" class="back-btn">戻る</button>
+        </form>
+    </div>
+
+    <div id="login-container" class="container hidden">
+        <h1>🔑 ログイン</h1>
+        <form id="login-form">
+            <input type="text" id="login-username" placeholder="ユーザー名" required>
+            <input type="password" id="login-password" placeholder="パスワード" required>
+            <button type="submit">ログイン</button>
+            <button type="button" class="back-btn">戻る</button>
         </form>
     </div>
 
     <div id="schedule-container" class="container hidden">
-        <h1>🗓️ スケジュール管理</h1>
+        <div class="schedule-header">
+             <h1>🗓️ スケジュール管理</h1>
+             <button id="logout-btn">ログアウト</button>
+        </div>
+        <p><strong id="current-user"></strong>さんの予定</p>
+
+        <div id="calendar-container">
+            <div class="calendar-controls">
+                <div class="calendar-nav">
+                    <button id="prev-btn" title="前へ">&lt;</button>
+                    <button id="today-btn">今日</button>
+                    <button id="next-btn" title="次へ">&gt;</button>
+                </div>
+                <h2 id="calendar-title"></h2>
+                <div class="view-switcher">
+                    <button id="day-view-btn">日</button>
+                    <button id="week-view-btn" class="active">週</button>
+                    <button id="month-view-btn">月</button>
+                </div>
+            </div>
+            <div id="calendar-view">
+                </div>
+            </div>
 
         <form id="schedule-form" class="schedule-form">
             <input type="date" id="schedule-date" required>
@@ -27,7 +68,7 @@
             <button type="submit">追加</button>
         </form>
 
-        <h2>📝 予定リスト</h2>
+        <h2>📝 予定リスト（全件）</h2>
         <ul id="schedule-list">
             </ul>
     </div>
