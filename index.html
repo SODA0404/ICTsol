@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
 
     <!-- ウェルカム画面 -->
@@ -45,33 +47,59 @@
     <!-- スケジュール管理画面 -->
     <div id="schedule-container" class="container hidden">
         <div class="schedule-header">
-             <h1>🗓️ スケジュール管理</h1>
-             <button id="google-sync-btn" class="google-btn">Googleカレンダーと同期</button>
-             <button id="logout-btn">ログアウト</button>
+            <h1>🗓️ スケジュール管理</h1>
+            <div>
+                <button id="add-study-log-btn">勉強時間を記録</button>
+                <button id="google-sync-btn" class="google-btn">Googleカレンダーと同期</button>
+                <button id="logout-btn">ログアウト</button>
+            </div>
         </div>
         <p><strong id="current-user"></strong>さんの予定</p>
 
-        <button id="openModalBtn">勉強内容の追加</button>
 
-    <div id="modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <span id="closeModalBtn" class="close-button">&times;</span>
-            <h2>勉強内容を登録</h2>
-
-            <form id="studyForm" class="study-form">
-                <label for="studyContent">勉強内容</label>
-                <input type="text" id="studyContent" required>
-
-                <label for="subject">科目</label>
-                <input type="text" id="subject" required>
-
-                <label for="studyTime">勉強時間（分）</label>
-                <input type="number" id="studyTime" min="1" required>
-
-                <button type="submit">登録</button>
-            </form>
+        <div id="study-choice-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>記録方法を選択</h2>
+                <div class="choice-buttons">
+                    <button id="show-timer-btn">⏱️ タイマーで記録</button>
+                    <button id="show-manual-btn">✍️ 手動で入力</button>
+                </div>
+            </div>
         </div>
-    </div>
+
+        <div id="timer-log-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>タイマーで記録</h2>
+                <form id="timer-log-form">
+                    <input type="text" id="timer-subject" placeholder="科目" required>
+                    <input type="text" id="timer-content" placeholder="勉強内容" required>
+                    <div id="timer-display">00:00:00</div>
+                    <button type="button" id="timer-toggle-btn">スタート</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="manual-log-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>手動で入力</h2>
+                <form id="manual-log-form">
+                    <input type="text" id="manual-subject" placeholder="科目" required>
+                    <input type="text" id="manual-content" placeholder="勉強内容" required>
+                    <label>勉強した日</label>
+                    <input type="date" id="manual-date" required>
+                    <label>開始時間</label>
+                    <input type="time" id="manual-start-time" required>
+                    <label>勉強時間（分）</label>
+                    <input type="number" id="manual-duration" placeholder="例: 60" min="1" required>
+                    <button type="submit">この内容で登録</button>
+                </form>
+            </div>
+        </div>
+
+
 
         <div id="calendar-container">
             <div class="calendar-controls">
@@ -114,9 +142,11 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.1s;
         }
+
         .google-btn:hover {
             background-color: #357ae8;
         }
+
         .google-btn:active {
             transform: scale(0.97);
         }
@@ -127,4 +157,5 @@
         }
     </style>
 </body>
+
 </html>

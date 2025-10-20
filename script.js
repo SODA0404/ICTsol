@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- (APIキー、要素取得などは変更なし) ---
     const API_KEY = '$2a$10$.Xv9dQJFAEDIV5pO50uXfeAWRhkkHcN94Rwc.0fBMgkNy8iauclHu'; // 自分のAPIキー
     const BIN_ID = '68e353e1d0ea881f4096e4f5'; // 自分のBin ID
-    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/68e353e1d0ea881f4096e4f5`;
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
     // --- 要素取得 ---
     const containers = {
@@ -40,76 +41,154 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentView = 'week';
     let currentDate = new Date();
 
-    // --- Google Calendar 同期用 ---
-    const CLIENT_ID = '163499005911-6v32s29gtk4t4oegd4077q4k5u0aa4ps.apps.googleusercontent.com';
-    const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-    const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+    // (Google Calendar 同期機能は変更なし)
+    // ...
 
-    let tokenClient;
-    let gapiInited = false;
-    let gisInited = false;
-    let accessToken = null;
+    // --- (主要な関数は変更なし) ---
+    // ...
 
-    function gapiLoaded() {
-        gapi.load('client', async () => {
-            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
-            gapiInited = true;
-            console.log('GAPIクライアント初期化完了');
+    // ===== ▼▼▼ ここから勉強記録機能のコード ▼▼▼ =====
+    // ★★★ 以前は外にあったコードを、すべてこの中に入れました ★★★
+
+    // ■ 1. 勉強記録用のHTML要素を取得
+    const addStudyLogBtn = document.getElementById('add-study-log-btn');
+    const studyChoiceModal = document.getElementById('study-choice-modal');
+    const timerLogModal = document.getElementById('timer-log-modal');
+    const manualLogModal = document.getElementById('manual-log-modal');
+    const showTimerBtn = document.getElementById('show-timer-btn');
+    const showManualBtn = document.getElementById('show-manual-btn');
+    const closeButtons = document.querySelectorAll('.modal-overlay .close-btn'); // より正確に指定
+    const timerDisplay = document.getElementById('timer-display');
+    const timerToggleBtn = document.getElementById('timer-toggle-btn');
+    const timerSubject = document.getElementById('timer-subject');
+    const timerContent = document.getElementById('timer-content');
+    const manualLogForm = document.getElementById('manual-log-form');
+
+    // ■ 2. モーダルの表示/非表示ロジック
+    addStudyLogBtn.addEventListener('click', () => {
+        studyChoiceModal.classList.remove('hidden');
+    });
+
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            studyChoiceModal.classList.add('hidden');
+            timerLogModal.classList.add('hidden');
+            manualLogModal.classList.add('hidden');
         });
-    }
+    });
 
-    function gisLoaded() {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            callback: (resp) => {
-                if (resp.error) {
-                    console.error(resp);
-                    alert('Googleログインに失敗しました');
-                    return;
-                }
-                accessToken = resp.access_token;
-                console.log('ログイン成功:', accessToken);
-                alert('Googleログイン成功！これで同期できます。');
-                syncSchedulesToGoogle();
-            },
-        });
-        gisInited = true;
-    }
+    showTimerBtn.addEventListener('click', () => {
+        studyChoiceModal.classList.add('hidden');
+        timerLogModal.classList.remove('hidden');
+    });
 
-function syncSchedulesToGoogle() {
-    if (!currentUser) return alert('まずログインしてください');
-    if (!accessToken) return alert('Googleログインしてください');
+    showManualBtn.addEventListener('click', () => {
+        studyChoiceModal.classList.add('hidden');
+        manualLogModal.classList.remove('hidden');
+    });
 
-    const usersData = JSON.parse(localStorage.getItem('scheduleAppUsers') || '{}');
-    const schedules = usersData[currentUser]?.schedules || [];
+    // ■ 3. タイマー機能の実装
+    let timerInterval = null;
+    let startTime = 0;
 
-    schedules.forEach(async (s) => {
-        const startDate = new Date(`${s.date}T${s.time}`);
-        if (isNaN(startDate)) {
-            console.error('日付解析エラー:', s);
-            return;
-        }
-        const endDate = new Date(startDate.getTime() + 60*60*1000); // 1時間予定
-        const event = {
-            summary: s.text,
-            start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Tokyo' },
-            end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Tokyo' },
-        };
-        try {
-            const response = await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event });
-            console.log('Googleカレンダーに追加:', response);
-        } catch (err) {
-            console.error('追加失敗:', err);
+    timerToggleBtn.addEventListener('click', () => {
+        if (timerToggleBtn.textContent === 'スタート') {
+            if (!timerSubject.value || !timerContent.value) {
+                return alert('科目と勉強内容を先に入力してください。');
+            }
+            startTime = new Date();
+            timerInterval = setInterval(updateTimer, 1000);
+            timerToggleBtn.textContent = 'ストップ';
+            timerToggleBtn.classList.add('is-timing');
+            timerSubject.disabled = true;
+            timerContent.disabled = true;
+        } else {
+            clearInterval(timerInterval);
+            const endTime = new Date();
+            const subject = timerSubject.value;
+            const content = timerContent.value;
+
+            // ★★★ 修正ポイント ★★★
+            // 既存の関数を呼び出してカレンダーに登録
+            addScheduleToCalendar(`【${subject}】${content}`, startTime, endTime);
+
+            // UIをリセット
+            timerToggleBtn.textContent = 'スタート';
+            timerToggleBtn.classList.remove('is-timing');
+            timerDisplay.textContent = '00:00:00';
+            timerSubject.disabled = false;
+            timerContent.disabled = false;
+            timerSubject.value = '';
+            timerContent.value = '';
+            timerLogModal.classList.add('hidden');
         }
     });
-    alert('全ての予定をGoogleカレンダーに同期しました！');
-}
 
+    function updateTimer() {
+        const now = new Date();
+        const elapsedTime = Math.floor((now - startTime) / 1000);
+        const hours = String(Math.floor(elapsedTime / 3600)).padStart(2, '0');
+        const minutes = String(Math.floor((elapsedTime % 3600) / 60)).padStart(2, '0');
+        const seconds = String(elapsedTime % 60).padStart(2, '0');
+        timerDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    // ■ 4. 手動入力機能の実装
+    manualLogForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const subject = document.getElementById('manual-subject').value;
+        const content = document.getElementById('manual-content').value;
+        const date = document.getElementById('manual-date').value;
+        const startTimeStr = document.getElementById('manual-start-time').value;
+        const duration = parseInt(document.getElementById('manual-duration').value);
+
+        const startDateTime = new Date(`${date}T${startTimeStr}`);
+        const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
+
+        // ★★★ 修正ポイント ★★★
+        addScheduleToCalendar(`【${subject}】${content}`, startDateTime, endDateTime);
+
+        manualLogForm.reset();
+        manualLogModal.classList.add('hidden');
+    });
+
+
+    // ■ 5. ★★★★★ ここが最重要修正ポイント ★★★★★
+    // 既存のカレンダー登録処理を呼び出す共通関数
+    async function addScheduleToCalendar(title, start, end) {
+        const newSchedule = {
+            // id: Date.now(), // 削除処理でidを使っていないため不要
+            date: start.toISOString().split('T')[0], // YYYY-MM-DD
+            time: start.toTimeString().split(' ')[0].substring(0, 5), // HH:mm
+            text: title,
+            end: end.toISOString() // 終了時刻も保存
+        };
+
+        // 既存のデータ処理フローに沿ってデータを保存
+        const usersData = await getUsersData();
+        if (!usersData[currentUser]) {
+            // このケースはほぼ無いはずだが念のため
+            usersData[currentUser] = { password: '', schedules: [] };
+        }
+        usersData[currentUser].schedules.push(newSchedule);
+
+        await saveUsersData(usersData);
+
+        // 既存のビュー更新関数を呼び出して画面を再描画
+        await updateView();
+
+        alert('勉強記録をカレンダーに登録しました！');
+    }
+    // ===== ▲▲▲ 勉強記録機能のコードここまで ▲▲▲ =====
+
+
+
+    // --- (既存のイベントリスナー設定や初期化処理は変更なし) ---
+    // ... (元のコードをそのままここに配置) ...
     // --- ユーティリティ ---
     const showScreen = (screen) => Object.values(containers).forEach(c => c.classList.toggle('hidden', c !== screen));
     const formatDate = (date, options) => new Intl.DateTimeFormat('ja-JP', options).format(date);
-    
+
     // --- データ保存・読み込み (JSONBin.io) ---
     async function getUsersData() {
         try {
@@ -121,7 +200,6 @@ function syncSchedulesToGoogle() {
             }
             if (!response.ok) throw new Error('データの読み込みに失敗しました。');
             const data = await response.json();
-            // Binが空の場合、recordが{}ではなく空文字列""になることがあるため、その対策
             return (typeof data.record === 'object' && data.record !== null) ? data.record : {};
         } catch (error) {
             console.error(error);
@@ -152,8 +230,7 @@ function syncSchedulesToGoogle() {
         if (!currentUser) return;
         const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
-        
-        // アクティブなビューボタン更新
+
         buttons.dayView.classList.remove('active');
         buttons.weekView.classList.remove('active');
         buttons.monthView.classList.remove('active');
@@ -173,8 +250,7 @@ function syncSchedulesToGoogle() {
         scheduleElements.calendarView.className = 'day-view';
         const dayElement = createDayElement(currentDate);
         const daySchedules = schedules.filter(s => s.date === currentDate.toISOString().split('T')[0])
-                                      .sort((a,b) => a.time.localeCompare(b.time));
-
+            .sort((a, b) => a.time.localeCompare(b.time));
         daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
         scheduleElements.calendarView.appendChild(dayElement.element);
     }
@@ -186,7 +262,7 @@ function syncSchedulesToGoogle() {
         startOfWeek.setDate(startOfWeek.getDate() + mondayOffset);
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
-        scheduleElements.calendarTitle.textContent = `${formatDate(startOfWeek, {month:'long', day:'numeric'})} - ${formatDate(endOfWeek, {month:'long', day:'numeric'})}`;
+        scheduleElements.calendarTitle.textContent = `${formatDate(startOfWeek, { month: 'long', day: 'numeric' })} - ${formatDate(endOfWeek, { month: 'long', day: 'numeric' })}`;
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'week-view';
         for (let i = 0; i < 7; i++) {
@@ -194,7 +270,7 @@ function syncSchedulesToGoogle() {
             day.setDate(startOfWeek.getDate() + i);
             const dayElement = createDayElement(day);
             const daySchedules = schedules.filter(s => s.date === day.toISOString().split('T')[0])
-                                          .sort((a,b) => a.time.localeCompare(b.time));
+                .sort((a, b) => a.time.localeCompare(b.time));
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -217,7 +293,7 @@ function syncSchedulesToGoogle() {
             if (day.getMonth() !== currentDate.getMonth()) dayElement.element.classList.add('other-month');
 
             const daySchedules = schedules.filter(s => s.date === day.toISOString().split('T')[0])
-                                          .sort((a,b) => a.time.localeCompare(b.time));
+                .sort((a, b) => a.time.localeCompare(b.time));
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -225,16 +301,16 @@ function syncSchedulesToGoogle() {
 
     function renderScheduleList(schedules) {
         scheduleElements.list.innerHTML = '';
-        schedules.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
-                 .forEach(s => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span class="schedule-item-content">
-                    <strong>${s.date} (${new Intl.DateTimeFormat('ja-JP', {weekday:'short'}).format(new Date(s.date))})</strong> ${s.time} - ${s.text}
-                </span>
-                <button class="delete-btn">削除</button>`;
-            scheduleElements.list.appendChild(li);
-        });
+        schedules.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
+            .forEach(s => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                <span class="schedule-item-content">
+                    <strong>${s.date} (${new Intl.DateTimeFormat('ja-JP', { weekday: 'short' }).format(new Date(s.date))})</strong> ${s.time} - ${s.text}
+                </span>
+                <button class="delete-btn">削除</button>`;
+                scheduleElements.list.appendChild(li);
+            });
     }
 
     // --- DOM要素作成ヘルパー ---
@@ -242,14 +318,11 @@ function syncSchedulesToGoogle() {
         const element = document.createElement('div');
         element.classList.add('calendar-day');
         if (date.toDateString() === new Date().toDateString()) element.classList.add('today');
-
         const header = document.createElement('div');
         header.classList.add('calendar-day-header');
-        header.textContent = formatDate(date, currentView === 'month' ? {day:'numeric'} : {month:'numeric', day:'numeric', weekday:'short'});
-
+        header.textContent = formatDate(date, currentView === 'month' ? { day: 'numeric' } : { month: 'numeric', day: 'numeric', weekday: 'short' });
         const body = document.createElement('div');
         body.classList.add('calendar-day-body');
-
         element.append(header, body);
         return { element, body };
     }
@@ -296,44 +369,44 @@ function syncSchedulesToGoogle() {
             showScreen(containers.welcome);
         });
 
-forms.schedule.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const date = forms.schedule.querySelector('input[type="date"]').value;
-    const time = forms.schedule.querySelector('input[type="time"]').value;
-    const text = forms.schedule.querySelector('input[type="text"]').value.trim();
-    if(!date || !time || !text) return alert('全て入力してください。');
+        forms.schedule.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = forms.schedule.querySelector('input[type="date"]').value;
+            const time = forms.schedule.querySelector('input[type="time"]').value;
+            const text = forms.schedule.querySelector('input[type="text"]').value.trim();
+            if (!date || !time || !text) return alert('全て入力してください。');
 
-    const usersData = await getUsersData();
-    if (!usersData[currentUser]) {
-        usersData[currentUser] = { password: '', schedules: [] };
-    }
-    usersData[currentUser].schedules.push({ date, time, text });
-
-    await saveUsersData(usersData);
-    localStorage.setItem('scheduleAppUsers', JSON.stringify(usersData));
-
-    forms.schedule.reset();
-    await updateView();
-});
-
-scheduleElements.list.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('delete-btn')) {
-        const content = e.target.previousElementSibling.textContent;
-        const match = content.match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2})\s-\s(.+)/);
-        if (match) {
-            const [_, date, time, text] = match.map(item => item.trim());
-            const usersData = await getUsersData(); 
-            const schedules = usersData[currentUser].schedules;
-            const index = schedules.findIndex(s => s.date === date && s.time === time && s.text === text);
-            if (index > -1) {
-                schedules.splice(index, 1);
-                await saveUsersData(usersData);
-                await updateView();
+            const usersData = await getUsersData();
+            if (!usersData[currentUser]) {
+                usersData[currentUser] = { password: '', schedules: [] };
             }
-        }
-    }
-});
+            // ★★★ 終了時間を1時間後として設定するよう変更 ★★★
+            const start = new Date(`${date}T${time}`);
+            const end = new Date(start.getTime() + 60 * 60 * 1000); // 1時間後
+            usersData[currentUser].schedules.push({ date, time, text, end: end.toISOString() });
 
+            await saveUsersData(usersData);
+            forms.schedule.reset();
+            await updateView();
+        });
+
+        scheduleElements.list.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const content = e.target.previousElementSibling.textContent;
+                const match = content.match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2})\s-\s(.+)/);
+                if (match) {
+                    const [_, date, time, text] = match.map(item => item.trim());
+                    const usersData = await getUsersData();
+                    const schedules = usersData[currentUser].schedules;
+                    const index = schedules.findIndex(s => s.date === date && s.time === time && s.text === text);
+                    if (index > -1) {
+                        schedules.splice(index, 1);
+                        await saveUsersData(usersData);
+                        await updateView();
+                    }
+                }
+            }
+        });
 
         buttons.today.addEventListener('click', () => {
             currentDate = new Date();
@@ -354,12 +427,6 @@ scheduleElements.list.addEventListener('click', async (e) => {
         buttons.dayView.addEventListener('click', () => { currentView = 'day'; updateView(); });
         buttons.weekView.addEventListener('click', () => { currentView = 'week'; updateView(); });
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
-
-        // Google Calendar 同期ボタン
-        buttons.googleSync.addEventListener('click', () => {
-            if (!gisInited) return alert('GISが初期化されていません。少々お待ちください');
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        });
     }
 
     async function loginUser(username) {
@@ -376,60 +443,4 @@ scheduleElements.list.addEventListener('click', async (e) => {
     // --- 初期化 ---
     setupEventListeners();
     showScreen(containers.welcome);
-    gapiLoaded();
-    gisLoaded();
 });
-
-// ############# 勉強内容登録用のボタン ###############
-// 1. 必要なHTML要素を取得する
-const openModalBtn = document.getElementById('openModalBtn');
-const closeModalBtn = document.getElementById('closeModalBtn');
-const modal = document.getElementById('modal');
-const studyForm = document.getElementById('studyForm');
-
-// 2. 「勉強内容の追加」ボタンが押されたときの処理
-openModalBtn.addEventListener('click', () => {
-    modal.classList.remove('hidden'); // hiddenクラスを削除して表示
-});
-
-// 3. 閉じるボタンが押されたときの処理
-closeModalBtn.addEventListener('click', () => {
-    modal.classList.add('hidden'); // hiddenクラスを追加して非表示
-});
-
-// 4. 背景がクリックされた時も閉じるようにする
-modal.addEventListener('click', (event) => {
-    // クリックされたのが背景（modal-overlay）自身なら閉じる
-    if (event.target === modal) {
-         modal.classList.add('hidden');
-    }
-});
-
-// 5. フォームの「登録」ボタンが押されたときの処理
-studyForm.addEventListener('submit', (event) => {
-    // フォームのデフォルトの送信動作をキャンセル（ページがリロードされなくなる）
-    event.preventDefault(); 
-    
-    // 入力フォームの要素を取得
-    const contentInput = document.getElementById('studyContent');
-    const subjectInput = document.getElementById('subject');
-    const timeInput = document.getElementById('studyTime');
-    
-    // ★入力された値を変数として保存する
-    const studyData = {
-        content: contentInput.value,
-        subject: subjectInput.value,
-        time: parseInt(timeInput.value, 10) // 文字列を数値に変換
-    };
-    
-    // 保存されたデータを確認（ブラウザの開発者ツールでコンソールを開いてください）
-    console.log('登録されたデータ:', studyData);
-    alert(`「${studyData.subject}」を${studyData.time}分間、記録しました！`);
-    
-    // フォームの中身をリセット
-    studyForm.reset();
-    
-    // ポップアップを閉じる
-    modal.classList.add('hidden');
-});
-// ###############################################
