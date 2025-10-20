@@ -51,6 +51,28 @@
         </div>
         <p><strong id="current-user"></strong>さんの予定</p>
 
+        <button id="openModalBtn">勉強内容の追加</button>
+
+    <div id="modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span id="closeModalBtn" class="close-button">&times;</span>
+            <h2>勉強内容を登録</h2>
+
+            <form id="studyForm" class="study-form">
+                <label for="studyContent">勉強内容</label>
+                <input type="text" id="studyContent" required>
+
+                <label for="subject">科目</label>
+                <input type="text" id="subject" required>
+
+                <label for="studyTime">勉強時間（分）</label>
+                <input type="number" id="studyTime" min="1" required>
+
+                <button type="submit">登録</button>
+            </form>
+        </div>
+    </div>
+
         <div id="calendar-container">
             <div class="calendar-controls">
                 <div class="calendar-nav">

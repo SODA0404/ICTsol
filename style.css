@@ -1,4 +1,3 @@
-/* --- CSS（デザイン） --- */
 :root {
     --primary-color: #3498db;
     --danger-color: #e74c3c;
@@ -136,4 +135,72 @@ h1, h2 {
     #calendar-view.week-view, #calendar-view.month-view { display: block; }
     .week-view .calendar-day, .month-view .calendar-day { border-bottom: 2px solid #eee; min-height: 80px; }
     .month-view .other-month { display: none; }
+}
+
+/* ポップアップの背景 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明の黒 */
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ポップアップのコンテンツ部分 */
+.modal-content {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+}
+
+/* 閉じるボタン */
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* フォームのスタイル */
+.study-form label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.study-form input[type="text"],
+.study-form input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box; /* paddingを含めてwidthを100%にする */
+}
+
+.study-form button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.study-form button:hover {
+    background-color: #0056b3;
+}
+
+/* JSで表示/非表示を切り替えるためのクラス */
+.hidden {
+    display: none !important;
 }

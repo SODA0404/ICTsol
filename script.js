@@ -379,3 +379,57 @@ scheduleElements.list.addEventListener('click', async (e) => {
     gapiLoaded();
     gisLoaded();
 });
+
+// ############# 勉強内容登録用のボタン ###############
+// 1. 必要なHTML要素を取得する
+const openModalBtn = document.getElementById('openModalBtn');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const modal = document.getElementById('modal');
+const studyForm = document.getElementById('studyForm');
+
+// 2. 「勉強内容の追加」ボタンが押されたときの処理
+openModalBtn.addEventListener('click', () => {
+    modal.classList.remove('hidden'); // hiddenクラスを削除して表示
+});
+
+// 3. 閉じるボタンが押されたときの処理
+closeModalBtn.addEventListener('click', () => {
+    modal.classList.add('hidden'); // hiddenクラスを追加して非表示
+});
+
+// 4. 背景がクリックされた時も閉じるようにする
+modal.addEventListener('click', (event) => {
+    // クリックされたのが背景（modal-overlay）自身なら閉じる
+    if (event.target === modal) {
+         modal.classList.add('hidden');
+    }
+});
+
+// 5. フォームの「登録」ボタンが押されたときの処理
+studyForm.addEventListener('submit', (event) => {
+    // フォームのデフォルトの送信動作をキャンセル（ページがリロードされなくなる）
+    event.preventDefault(); 
+    
+    // 入力フォームの要素を取得
+    const contentInput = document.getElementById('studyContent');
+    const subjectInput = document.getElementById('subject');
+    const timeInput = document.getElementById('studyTime');
+    
+    // ★入力された値を変数として保存する
+    const studyData = {
+        content: contentInput.value,
+        subject: subjectInput.value,
+        time: parseInt(timeInput.value, 10) // 文字列を数値に変換
+    };
+    
+    // 保存されたデータを確認（ブラウザの開発者ツールでコンソールを開いてください）
+    console.log('登録されたデータ:', studyData);
+    alert(`「${studyData.subject}」を${studyData.time}分間、記録しました！`);
+    
+    // フォームの中身をリセット
+    studyForm.reset();
+    
+    // ポップアップを閉じる
+    modal.classList.add('hidden');
+});
+// ###############################################
