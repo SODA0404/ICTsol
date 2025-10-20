@@ -120,6 +120,10 @@ h1, h2 {
 /* --- 予定入力フォーム --- */
 .schedule-form { display: flex; flex-wrap: wrap; gap: 10px; margin: 25px 0; border-top: 1px solid #eee; padding-top: 25px; }
 .schedule-form input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+.schedule-form input[type="date"],
+.schedule-form input[type="time"] { /* このスタイルが新しい入力欄にも適用されます */
+    flex-basis: 150px;
+}
 .schedule-form input[type="text"] { flex-grow: 1; }
 .schedule-form button { padding: 10px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
 

@@ -50,11 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'X-Master-Key': API_KEY }
             });
             if (response.status === 404) {
-                return {}; // Binが空か存在しない場合は空のオブジェクトを返す
+                return {};
             }
             if (!response.ok) throw new Error('データの読み込みに失敗しました。');
             const data = await response.json();
-            // Binが空の場合、recordが{}ではなく空文字列""になることがあるため、その対策
             return (typeof data.record === 'object' && data.record !== null) ? data.record : {};
         } catch (error) {
             console.error(error);
@@ -95,10 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (currentView === 'week') renderWeekView(schedules);
         else if (currentView === 'month') renderMonthView(schedules);
 
-        renderScheduleList(schedules);
+        renderScheduleList(schedules); // 修正済みの関数がここで呼ばれる
     }
 
-    // --- 各ビューの描画関数 ---
+    // --- 各ビューの描画関数 (変更なし) ---
     function renderDayView(schedules) {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
         scheduleElements.calendarView.innerHTML = '';
@@ -106,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayElement = createDayElement(currentDate);
         const daySchedules = schedules
             .filter(s => s.date === currentDate.toISOString().split('T')[0])
-            .sort((a,b) => a.time.localeCompare(b.time));
+            .sort((a,b) => a.startTime.localeCompare(b.startTime));
         daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
         scheduleElements.calendarView.appendChild(dayElement.element);
     }
@@ -127,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayElement = createDayElement(day);
             const daySchedules = schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a, b) => a.time.localeCompare(b.time));
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -151,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const daySchedules = schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a,b) => a.time.localeCompare(b.time));
+                .sort((a,b) => a.startTime.localeCompare(b.startTime));
             daySchedules.forEach(s => dayElement.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElement.element);
         }
@@ -159,20 +158,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderScheduleList(schedules) {
         scheduleElements.list.innerHTML = '';
-        schedules
-            .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
+        
+        const now = new Date(); // 現在時刻を取得
+
+        // 終了時刻が現在時刻より後の（＝まだ終わっていない）予定のみをフィルタリング
+        const futureSchedules = schedules.filter(s => {
+            const scheduleEndTime = new Date(`${s.date}T${s.endTime}`);
+            return scheduleEndTime > now;
+        });
+
+        // フィルタリングされた未来の予定だけをソートして表示
+        futureSchedules
+            .sort((a, b) => new Date(`${a.date}T${a.startTime}`) - new Date(`${b.date}T${b.startTime}`))
             .forEach(s => {
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <span class="schedule-item-content">
-                        <strong>${s.date} (${new Intl.DateTimeFormat('ja-JP', {weekday: 'short'}).format(new Date(s.date))})</strong> ${s.time} - ${s.text}
+                        <strong>${s.date} (${new Intl.DateTimeFormat('ja-JP', {weekday: 'short'}).format(new Date(s.date))})</strong> ${s.startTime} - ${s.endTime} - ${s.text}
                     </span>
                     <button class="delete-btn">削除</button>`;
                 scheduleElements.list.appendChild(li);
             });
     }
 
-    // --- DOM要素作成ヘルパー ---
+    // --- DOM要素作成ヘルパー (変更なし) ---
     function createDayElement(date) {
         const element = document.createElement('div');
         element.classList.add('calendar-day');
@@ -189,11 +198,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function createScheduleItem(schedule) {
         const item = document.createElement('div');
         item.classList.add('calendar-schedule-item');
-        item.textContent = `${schedule.time} ${schedule.text}`;
+        item.textContent = `${schedule.startTime}-${schedule.endTime} ${schedule.text}`;
         return item;
     }
 
-    // --- イベントリスナー設定 ---
+    // --- イベントリスナー設定 (変更なし) ---
     function setupEventListeners() {
         buttons.showLogin.addEventListener('click', () => showScreen(containers.login));
         buttons.showRegister.addEventListener('click', () => showScreen(containers.register));
@@ -230,15 +239,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         forms.schedule.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const date = forms.schedule.querySelector('input[type="date"]').value;
-            const time = forms.schedule.querySelector('input[type="time"]').value;
-            const text = forms.schedule.querySelector('input[type="text"]').value.trim();
-            if(!date || !time || !text) return alert('全て入力してください。');
+            const date = forms.schedule.querySelector('#schedule-date').value;
+            const startTime = forms.schedule.querySelector('#schedule-start-time').value;
+            const endTime = forms.schedule.querySelector('#schedule-end-time').value;
+            const text = forms.schedule.querySelector('#schedule-text').value.trim();
+            if(!date || !startTime || !endTime || !text) return alert('全て入力してください。');
+            if (endTime <= startTime) {
+                return alert('終了時間は開始時間よりも後に設定してください。');
+            }
             const usersData = await getUsersData();
-            if (!usersData[currentUser]) { //念のためユーザーデータが存在するか確認
+            if (!usersData[currentUser]) {
                 usersData[currentUser] = { password: '', schedules: [] };
             }
-            usersData[currentUser].schedules.push({ date, time, text });
+            usersData[currentUser].schedules.push({ date, startTime, endTime, text });
             await saveUsersData(usersData);
             forms.schedule.reset();
             await updateView();
@@ -247,12 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleElements.list.addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-btn')) {
                 const content = e.target.previousElementSibling.textContent;
-                const match = content.match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2})\s-\s(.+)/);
+                const match = content.match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2})\s-\s(\d{2}:\d{2})\s-\s(.+)/);
                 if (match) {
-                    const [_, date, time, text] = match.map(item => item.trim());
+                    const [_, date, startTime, endTime, text] = match.map(item => item.trim());
                     const usersData = await getUsersData();
                     const schedules = usersData[currentUser].schedules;
-                    const index = schedules.findIndex(s => s.date === date && s.time === time && s.text === text);
+                    const index = schedules.findIndex(s => 
+                        s.date === date && 
+                        s.startTime === startTime && 
+                        s.endTime === endTime && 
+                        s.text === text
+                    );
                     if (index > -1) {
                         schedules.splice(index, 1);
                         await saveUsersData(usersData);
