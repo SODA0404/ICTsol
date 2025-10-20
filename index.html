@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>シンプルスケジュールアプリ</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Google API -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
+    <!-- ウェルカム画面 -->
     <div id="welcome-container" class="container">
         <h1>ようこそ！</h1>
         <div class="welcome-buttons">
@@ -16,6 +20,7 @@
         </div>
     </div>
 
+    <!-- 新規登録画面 -->
     <div id="register-container" class="container hidden">
         <h1>👤 新規登録</h1>
         <form id="register-form">
@@ -26,6 +31,7 @@
         </form>
     </div>
 
+    <!-- ログイン画面 -->
     <div id="login-container" class="container hidden">
         <h1>🔑 ログイン</h1>
         <form id="login-form">
@@ -36,9 +42,11 @@
         </form>
     </div>
 
+    <!-- スケジュール管理画面 -->
     <div id="schedule-container" class="container hidden">
         <div class="schedule-header">
              <h1>🗓️ スケジュール管理</h1>
+             <button id="google-sync-btn" class="google-btn">Googleカレンダーと同期</button>
              <button id="logout-btn">ログアウト</button>
         </div>
         <p><strong id="current-user"></strong>さんの予定</p>
@@ -57,8 +65,7 @@
                     <button id="month-view-btn">月</button>
                 </div>
             </div>
-            <div id="calendar-view">
-                </div>
+            <div id="calendar-view"></div>
         </div>
 
         <form id="schedule-form" class="schedule-form">
@@ -69,12 +76,33 @@
         </form>
 
         <h2>📝 予定リスト（全件）</h2>
-        
-        <ul id="schedule-list">
-            </ul>
+        <ul id="schedule-list"></ul>
     </div>
 
     <script src="script.js"></script>
 
+    <style>
+        /* 蓝色 Google 按钮样式 */
+        .google-btn {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        .google-btn:hover {
+            background-color: #357ae8;
+        }
+        .google-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* 全局按钮点击手势 */
+        button {
+            cursor: pointer;
+        }
+    </style>
 </body>
 </html>
