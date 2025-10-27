@@ -1,7 +1,0 @@
-git bashを開く
-git init
-git remote add origin https://github.com/SODA0404/ICTsol.git
-git pull origin main
-git add test.txt
-git commit -m "aaa"
-git push origin main
