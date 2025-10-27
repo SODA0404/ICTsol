@@ -1,96 +1,586 @@
-/* --- CSS（デザイン） --- */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.6;
-    background-color: #f4f7f6;
-    color: #333;
+/* =========================================================
+   Unified Final CSS
+   ========================================================= */
+
+/* --- CSS Reset & Base Variables --- */
+*, *::before, *::after {
+    box-sizing: border-box;
     margin: 0;
-    padding: 20px;
-}
-
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    background-color: #fff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-h1 {
-    text-align: center;
-    color: #2c3e50;
-}
-
-/* 予定入力フォーム */
-.schedule-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 25px;
-}
-
-.schedule-form input {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.schedule-form input[type="date"],
-.schedule-form input[type="time"] {
-    flex-basis: 150px;
-}
-
-.schedule-form input[type="text"] {
-    flex-grow: 1; /* 残りのスペースを埋める */
-}
-
-.schedule-form button {
-    padding: 10px 15px;
-    background-color: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.schedule-form button:hover {
-    background-color: #2980b9;
-}
-
-/* 予定リスト */
-#schedule-list {
-    list-style: none;
     padding: 0;
 }
 
-#schedule-list li {
-    background-color: #ecf0f1;
-    padding: 15px;
+:root {
+    --primary-color: #6a5af9;
+    --primary-hover: #5a4ae0;
+    --secondary-color: #f0f2f5;
+    --accent-color: #e74c3c;
+    --bg-color: #f0f2f5;
+    --surface-color: #ffffff;
+    --text-primary: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --border-color: #dcdcdc;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --font-family: 'Inter', 'Noto Sans JP', sans-serif;
+}
+
+body.dark-mode {
+    --primary-color: #7b6ef1;
+    --primary-hover: #6a5af9;
+    --secondary-color: #2c2c2e;
+    --accent-color: #ff6b6b;
+    --bg-color: #1c1c1e;
+    --surface-color: #2c2c2e;
+    --text-primary: #f5f5f7;
+    --text-secondary: #a1a1a6;
+    --border-color: #444446;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.hidden { display: none !important; }
+
+/* =========================================================
+   Global Theme Toggle
+   ========================================================= */
+#global-theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background-color: var(--surface-color);
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+}
+
+.theme-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc; transition: .4s; border-radius: 24px;
+}
+.slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px;
+    left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--primary-color); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* =========================================================
+   Authentication Screens
+   ========================================================= */
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--surface-color);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+.auth-card h1 {
+    font-size: 2em;
     margin-bottom: 10px;
-    border-radius: 4px;
+}
+.auth-card p {
+    color: var(--text-secondary);
+    margin-bottom: 30px;
+}
+.welcome-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.input-group {
+    position: relative;
+}
+.input-group i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+.input-group input {
+    width: 100%;
+    padding: 15px 15px 15px 45px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+.btn, button {
+    font-family: var(--font-family);
+    font-size: 16px;
+    padding: 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+.btn-secondary:hover {
+    background-color: var(--border-color);
+}
+.btn-block {
+    width: 100%;
+}
+.btn-link {
+    background: none;
+    color: var(--text-secondary);
+    padding: 10px;
+}
+.btn-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+/* =========================================================
+   App Layout & Header
+   ========================================================= */
+.container-fluid {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+.app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 15px 30px;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 10px;
+    /* ★★★ 修正点: 右側にトグルスイッチ分の余白を確保 ★★★ */
+    padding-right: 140px; 
+    position: relative; 
+}
+.app-header h2 {
+    font-size: 1.5em;
+    margin: 0;
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px;
+}
+.btn-icon:hover {
+    color: var(--text-primary);
+}
+#add-study-log-btn {
+    padding: 10px 15px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.9em;
+}
+#add-study-log-btn:hover {
+    background-color: var(--primary-hover);
 }
 
+/* =========================================================
+   App Main Content (Calendar + Sidebar)
+   ========================================================= */
+.app-main {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px;
+    gap: 20px;
+}
+.calendar-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.card {
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+.card h3 {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+.card h3 i {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
+
+/* =========================================================
+   Calendar
+   ========================================================= */
+#calendar-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 0 10px;
+}
+.calendar-controls h2 {
+    font-size: 1.5em;
+    margin: 0;
+    text-align: left;
+}
+.calendar-nav, .view-switcher {
+    display: flex;
+    gap: 5px;
+}
+.calendar-nav button, .view-switcher button {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    border-radius: 6px;
+    cursor: pointer;
+}
+.view-switcher button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+#calendar-view {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-grow: 1;
+}
+.calendar-day {
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+}
+.calendar-day-header {
+    padding: 8px;
+    font-weight: 500;
+    text-align: center;
+    background-color: var(--secondary-color);
+    border-bottom: 1px solid var(--border-color);
+}
+.calendar-day-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    font-size: 0.85em;
+    padding: 5px;
+    min-height: 100px;
+}
+.calendar-schedule-item {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    padding: 3px 6px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95em;
+    white-space: nowrap;
+}
+.today .calendar-day-header {
+    background-color: #fffbef;
+    color: #e6a23c;
+    font-weight: bold;
+}
+body.dark-mode .today .calendar-day-header {
+    background-color: #3a321f;
+    color: #f7d66a;
+}
+#calendar-view.week-view { display: grid; grid-template-columns: repeat(7, 1fr); }
+#calendar-view.month-view { display: grid; grid-template-columns: repeat(7, 1fr); }
+#calendar-view.day-view { display: block; }
+.month-view .other-month { background-color: var(--secondary-color); }
+body.dark-mode .month-view .other-month { background-color: #242426; }
+
+/* =========================================================
+   Modal & Popup Windows
+   ========================================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+.modal-content {
+    background: var(--surface-color);
+    padding: 25px 30px;
+    border-radius: 12px;
+    width: 90%; max-width: 500px;
+    position: relative;
+    box-shadow: var(--shadow);
+}
+.modal-content h2 {
+    margin-bottom: 20px;
+}
+.close-btn {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+.close-btn:hover {
+    color: var(--text-primary);
+}
+.choice-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.choice-buttons button {
+    padding: 20px;
+    font-size: 1.1em;
+}
+
+/* =========================================================
+   Timer & Study Form
+   ========================================================= */
+#timer-display {
+    font-size: 3.5em;
+    text-align: center;
+    margin: 20px 0;
+    font-family: monospace;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+#timer-log-form, #manual-log-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+#timer-log-form input, 
+#manual-log-form input[type="text"],
+#manual-log-form input[type="date"],
+#manual-log-form input[type="time"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+}
+#timer-log-form button, #manual-log-form button {
+    padding: 15px;
+    font-size: 16px;
+}
+#timer-toggle-btn.is-timing { 
+    background-color: var(--accent-color); 
+}
+#timer-toggle-btn.is-timing:hover { 
+    background-color: #c0392b; 
+}
+#manual-log-form label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: -10px;
+}
+
+/* =========================================================
+   Schedule Form (Sidebar)
+   ========================================================= */
+.schedule-form-wrapper form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.schedule-form-wrapper label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: -8px;
+}
+.schedule-form-wrapper input[type="date"],
+.schedule-form-wrapper input[type="time"],
+.schedule-form-wrapper input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+.time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.time-inputs label {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+.time-inputs input[type="time"] {
+    flex: 1;
+}
+.time-inputs span {
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+.schedule-form-wrapper button {
+    margin-top: 10px;
+}
+
+/* =========================================================
+   Schedule List (Sidebar)
+   ========================================================= */
+#schedule-list {
+    list-style: none;
+    max-height: 400px;
+    overflow-y: auto;
+}
+#schedule-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 10px;
+}
+#schedule-list li:last-child {
+    border-bottom: none;
+}
 .schedule-item-content {
+    font-size: 0.95em;
+    flex-grow: 1;
+}
+.schedule-item-content strong {
+    display: block;
+    color: var(--text-primary);
     font-weight: 500;
 }
-
+.schedule-item-content span {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
 .delete-btn {
-    background-color: #e74c3c;
-    color: white;
+    background: none;
     border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 1.1em;
     cursor: pointer;
-    transition: background-color 0.3s;
+    padding: 5px;
+}
+.delete-btn:hover {
+    color: var(--accent-color);
 }
 
-.delete-btn:hover {
-    background-color: #c0392b;
+/* =========================================================
+   Responsive Adjustments
+   ========================================================= */
+@media (max-width: 1024px) {
+    .app-main {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        flex-direction: row;
+        gap: 20px;
+    }
+    .schedule-form-wrapper, .schedule-list-wrapper {
+        flex: 1;
+    }
+}
+@media (max-width: 768px) {
+    .app-header { 
+        flex-direction: column; 
+        align-items: stretch;
+        padding: 15px;
+        /* ★ 修正: スマホ表示ではトグルと重ならないので余白不要 */
+        padding-right: 15px; 
+    }
+    .header-left { text-align: center; }
+    .header-right { justify-content: center; }
+    .app-main { padding: 10px; }
+    .sidebar { flex-direction: column; }
+    .calendar-controls { flex-direction: column; gap: 10px; align-items: stretch; }
+    #calendar-view.week-view, #calendar-view.month-view { display: block; }
+}
+
+/* =========================================================
+   Google Button (from inline style)
+   ========================================================= */
+.google-btn {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    font-size: 1.2em; /* アイコンボタンとしてサイズ調整 */
+}
+.google-btn:hover {
+    background-color: #357ae8;
+}
+.google-btn:active {
+    transform: scale(0.97);
 }
