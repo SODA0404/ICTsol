@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="review-modal.css">
     
     <script src="https://apis.google.com/js/api.js" defer></script>
     <script src="https://accounts.google.com/gsi/client" defer></script>
@@ -180,5 +181,25 @@
         </div>
     </div>
     
+    <!-- 復習内容レビュー画面の表示 --> 
+    <div id="review-feedback-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>復習の評価</h2>
+            <p style="margin-top:0; font-size: 0.9em; color: #555;">学習項目:</p>
+            <h3 id="review-item-text" style="margin-top:-10px;">（ここに学習項目が表示されます）</h3>
+            
+            <input type="hidden" id="review-item-id-hidden">
+            
+            <p>今回の出来栄えを選択してください:</p>
+            <div class="feedback-buttons">
+                <button class="feedback-btn quality-5" data-quality="5">5: 完璧に思い出せた</button>
+                <button class="feedback-btn quality-4" data-quality="4">4: 思い出せた</button>
+                <button class="feedback-btn quality-3" data-quality="3">3: 難しかった</button>
+                <button class="feedback-btn quality-2" data-quality="2">2: 思い出せなかった</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
