@@ -4,78 +4,181 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>シンプルスケジュールアプリ</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
     <link rel="stylesheet" href="style.css">
+    
+    <script src="https://apis.google.com/js/api.js" defer></script>
+    <script src="https://accounts.google.com/gsi/client" defer></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
 
-    <div id="welcome-container" class="container">
-        <h1>ようこそ！</h1>
-        <div class="welcome-buttons">
-            <button id="show-login-btn">ログイン</button>
-            <button id="show-register-btn">新規登録</button>
-        </div>
+    <div id="global-theme-toggle">
+        <i class="fas fa-sun"></i>
+        <label class="theme-toggle-switch">
+            <input type="checkbox" id="theme-toggle-checkbox">
+            <span class="slider"></span>
+        </label>
+        <i class="fas fa-moon"></i>
     </div>
 
-    <div id="register-container" class="container hidden">
-        <h1>👤 新規登録</h1>
-        <form id="register-form">
-            <input type="text" id="register-username" placeholder="ユーザー名" required>
-            <input type="password" id="register-password" placeholder="パスワード" required>
-            <button type="submit">登録して開始</button>
-            <button type="button" class="back-btn">戻る</button>
-        </form>
-    </div>
 
-    <div id="login-container" class="container hidden">
-        <h1>🔑 ログイン</h1>
-        <form id="login-form">
-            <input type="text" id="login-username" placeholder="ユーザー名" required>
-            <input type="password" id="login-password" placeholder="パスワード" required>
-            <button type="submit">ログイン</button>
-            <button type="button" class="back-btn">戻る</button>
-        </form>
-    </div>
-
-    <div id="schedule-container" class="container hidden">
-        <div class="schedule-header">
-             <h1>🗓️ スケジュール管理</h1>
-             <button id="logout-btn">ログアウト</button>
-        </div>
-        <p><strong id="current-user"></strong>さんの予定</p>
-
-        <div id="calendar-container">
-            <div class="calendar-controls">
-                <div class="calendar-nav">
-                    <button id="prev-btn" title="前へ">&lt;</button>
-                    <button id="today-btn">今日</button>
-                    <button id="next-btn" title="次へ">&gt;</button>
-                </div>
-                <h2 id="calendar-title"></h2>
-                <div class="view-switcher">
-                    <button id="day-view-btn">日</button>
-                    <button id="week-view-btn" class="active">週</button>
-                    <button id="month-view-btn">月</button>
+    <div class="app-wrapper">
+        <div id="welcome-container" class="container view">
+            <div class="auth-card">
+                <h1>🗓️ ようこそ! </h1>
+                <p>あなたの毎日を、もっとスマートに。</p>
+                <div class="welcome-buttons">
+                    <button id="show-login-btn" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> ログイン</button>
+                    <button id="show-register-btn" class="btn btn-secondary"><i class="fas fa-user-plus"></i> 新規登録</button>
                 </div>
             </div>
-            <div id="calendar-view">
-                </div>
         </div>
 
-        <form id="schedule-form" class="schedule-form">
-            <input type="date" id="schedule-date" required>
-            <input type="time" id="schedule-start-time" required>
-            <input type="time" id="schedule-end-time" required>
-            <input type="text" id="schedule-text" placeholder="予定を入力..." required>
-            <button type="submit">追加</button>
-        </form>
+        <div id="register-container" class="container view hidden">
+            <div class="auth-card">
+                <h1><i class="fas fa-user-plus"></i> 新規登録</h1>
+                <form id="register-form" class="auth-form">
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="ユーザー名" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="パスワード" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">登録して開始</button>
+                    <button type="button" class="btn btn-link back-btn">戻る</button>
+                </form>
+            </div>
+        </div>
 
-        <h2>📝 予定リスト（全件）</h2>
-        
-        <ul id="schedule-list">
-            </ul>
+        <div id="login-container" class="container view hidden">
+            <div class="auth-card">
+                 <h1><i class="fas fa-sign-in-alt"></i> ログイン</h1>
+                <form id="login-form" class="auth-form">
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="ユーザー名" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="パスワード" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">ログイン</button>
+                    <button type="button" class="btn btn-link back-btn">戻る</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="schedule-container" class="container-fluid view hidden">
+            <header class="app-header">
+                <div class="header-left">
+                    <h2><strong id="current-user"></strong>'s Schedule</h2>
+                </div>
+                <div class="header-right">
+                    <button id="add-study-log-btn">勉強時間を記録</button>
+                    <button id="google-sync-btn" class="btn-icon google-btn" title="Googleカレンダーと同期">
+                        <i class="fab fa-google"></i>
+                    </button>
+                    <button id="logout-btn" class="btn-icon" title="ログアウト">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <div id="study-choice-modal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2>記録方法を選択</h2>
+                    <div class="choice-buttons">
+                        <button id="show-timer-btn">⏱️ タイマーで記録</button>
+                        <button id="show-manual-btn">✍️ 手動で入力</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="timer-log-modal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2>タイマーで記録</h2>
+                    <form id="timer-log-form">
+                        <input type="text" id="timer-subject" placeholder="科目" required>
+                        <input type="text" id="timer-content" placeholder="勉強内容" required>
+                        <div id="timer-display">00:00:00</div>
+                        <button type="button" id="timer-toggle-btn">スタート</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="manual-log-modal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2>手動で入力</h2>
+                    <form id="manual-log-form">
+                        <input type="text" id="manual-subject" placeholder="科目" required>
+                        <input type="text" id="manual-content" placeholder="勉強内容" required>
+                        <label>勉強した日</label>
+                        <input type="date" id="manual-date" required>
+                        <label>開始時間</label>
+                        <input type="time" id="manual-start-time" required>
+                        <label>勉強時間（分）</label>
+                        <input type="number" id="manual-duration" placeholder="例: 60" min="1" required>
+                        <button type="submit">この内容で登録</button>
+                    </form>
+                </div>
+            </div>
+
+            <main class="app-main">
+                <div class="calendar-wrapper">
+                    <div id="calendar-container">
+                        <div class="calendar-controls">
+                            <h2 id="calendar-title"></h2>
+                            <div class="calendar-nav">
+                                <button id="prev-btn" title="前へ"><i class="fas fa-chevron-left"></i></button>
+                                <button id="today-btn">今日</button>
+                                <button id="next-btn" title="次へ"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="view-switcher">
+                                <button id="day-view-btn">日</button>
+                                <button id="week-view-btn" class="active">週</button>
+                                <button id="month-view-btn">月</button>
+                            </div>
+                        </div>
+                        <div id="calendar-view"></div>
+                    </div>
+                </div>
+                <div class="sidebar">
+                    <div class="schedule-form-wrapper card">
+                        <h3><i class="fas fa-plus-circle"></i> 新しい予定</h3>
+                        <form id="schedule-form">
+                            <label>日付</label>
+                            <input type="date" id="schedule-date" required>
+                            <div class="time-inputs">
+                                <label>開始</label>
+                                <input type="time" id="schedule-start-time" required>
+                                <span>-</span>
+                                <label>終了</label>
+                                <input type="time" id="schedule-end-time" required>
+                            </div>
+                            <label>予定</label>
+                            <input type="text" id="schedule-text" placeholder="予定の詳細を入力..." required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> 追加</button>
+                        </form>
+                    </div>
+                    <div class="schedule-list-wrapper card">
+                        <h3><i class="fas fa-list-ul"></i> 予定リスト</h3>
+                        <ul id="schedule-list"></ul>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-
-    <script src="script.js"></script>
-
+    
 </body>
 </html>
