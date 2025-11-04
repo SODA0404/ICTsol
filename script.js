@@ -134,13 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const durationMs = initialEnd.getTime() - initialStart.getTime();
-        
+
         // --- データ処理開始 ---
         const usersData = await getUsersData();
-        
+
         // 1. 初回の勉強を登録
         addScheduleToData(usersData, `【${subject}】${content} (初回)`, initialStart, initialEnd);
-        
+
         const proposalIntervals = [1, 3, 7, 30]; // 1日後, 3日後, 1週間後, 1ヶ月後
         const scheduledDates = [];
         const formatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 期限チェック (復習開始希望時刻が期限を過ぎていたらスキップ)
             if (deadline && preferredStart > deadline) {
-                continue; 
+                continue;
             }
 
             // ★ 空き時間スロットを検索 (現在の全スケジュールリストを渡す)
@@ -162,10 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (foundSlotStart) {
                 const foundSlotEnd = new Date(foundSlotStart.getTime() + durationMs);
                 const title = `【${subject}】${content} (復習 ${day}日目)`;
-                
+
                 // データをメモリ上（usersData）に追加
-                addScheduleToData(usersData, title, foundSlotStart, foundSlotEnd); 
-                
+                addScheduleToData(usersData, title, foundSlotStart, foundSlotEnd);
+
                 // 通知用の日付をフォーマット
                 scheduledDates.push(foundSlotStart.toLocaleString('ja-JP', formatOptions));
             } else {
@@ -214,35 +214,35 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         usersData[currentUser].schedules.push(newSchedule);
     }
-    
+
     // 空きスロット検索ヘルパー関数 (復習セット用)
     function findFreeSlot(preferredStart, durationMs, existingSchedules) {
         let proposalStart = new Date(preferredStart.getTime());
         let proposalEnd = new Date(proposalStart.getTime() + durationMs);
         const targetDateStr = proposalStart.toISOString().split('T')[0];
         let conflictFound = true;
-        let attempts = 0; 
+        let attempts = 0;
 
-        while (conflictFound && attempts < 100) { 
+        while (conflictFound && attempts < 100) {
             conflictFound = false;
             attempts++;
 
             for (const event of existingSchedules) {
-                if (event.date !== targetDateStr) continue; 
+                if (event.date !== targetDateStr) continue;
 
-                const eventStartStr = event.startTime || event.time; 
-                if (!eventStartStr) continue; 
+                const eventStartStr = event.startTime || event.time;
+                if (!eventStartStr) continue;
 
                 const existingStart = new Date(`${event.date}T${eventStartStr}`);
                 let existingEnd;
-                
+
                 if (event.endTime) {
                     existingEnd = new Date(`${event.date}T${event.endTime}`);
                 } else {
                     existingEnd = new Date(existingStart.getTime() + 60 * 60 * 1000); // 1h
                 }
 
-                if (isNaN(existingStart.getTime()) || isNaN(existingEnd.getTime())) continue; 
+                if (isNaN(existingStart.getTime()) || isNaN(existingEnd.getTime())) continue;
 
                 const isOverlapping = (proposalStart < existingEnd) && (proposalEnd > existingStart);
 
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (proposalStart.toISOString().split('T')[0] !== targetDateStr) {
                         return null; // 日付が変わったらNG
                     }
-                    break; 
+                    break;
                 }
             }
         }
@@ -272,13 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Google API 関連 ---
     // (グローバル関数を定義)
-    window.gapiLoaded = function() {
-        gapi.load('client', async () => { 
-            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] }); 
-            gapiInited = true; 
-        }); 
+    window.gapiLoaded = function () {
+        gapi.load('client', async () => {
+            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+            gapiInited = true;
+        });
     }
-    window.gisLoaded = function() {
+    window.gisLoaded = function () {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID, scope: SCOPES,
             callback: (resp) => {
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         gisInited = true;
     }
-    
+
     async function syncSchedulesToGoogle() {
         if (!currentUser) return alert('まずアプリにログインしてください');
         if (!accessToken) {
@@ -301,11 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
         const promises = schedules.map(s => {
-            const startDate = new Date(`${s.date}T${s.startTime || s.time}`); 
+            const startDate = new Date(`${s.date}T${s.startTime || s.time}`);
             let endDate;
-            
+
             if (s.endTime) {
-                endDate = new Date(`${s.date}T${s.endTime}`); 
+                endDate = new Date(`${s.date}T${s.endTime}`);
             } else {
                 endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h
             }
@@ -317,7 +317,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Tokyo' },
                 end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Tokyo' },
             };
-            return gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event }).catch(err => console.error('追加失敗:', err));
+            return gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: event
+            }).then(
+                (response) => console.log('追加成功:', response),
+                (error) => console.error('追加失敗:', error)
+            );
         });
         await Promise.all(promises);
         alert('Googleカレンダーへの同期が完了しました！');
@@ -349,17 +355,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUser) return;
         const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
-        
+
         ['dayView', 'weekView', 'monthView'].forEach(v => buttons[v]?.classList.remove('active'));
         buttons[`${currentView}View`]?.classList.add('active');
 
         if (currentView === 'day') renderDayView(schedules);
         else if (currentView === 'week') renderWeekView(schedules);
         else renderMonthView(schedules);
-        
+
         renderScheduleList(schedules);
     }
-    
+
     function renderDayView(schedules) {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
         scheduleElements.calendarView.innerHTML = '';
@@ -367,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayElem = createDayElement(currentDate);
         schedules
             .filter(s => s.date === currentDate.toISOString().split('T')[0])
-            .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+            .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
             .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
         scheduleElements.calendarView.appendChild(dayElem.element);
     }
@@ -376,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         start.setDate(start.getDate() - (start.getDay() === 0 ? 6 : start.getDay() - 1));
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
-        scheduleElements.calendarTitle.textContent = `${formatDate(start, {month:'long', day:'numeric'})} - ${formatDate(end, {month:'long', day:'numeric'})}`;
+        scheduleElements.calendarTitle.textContent = `${formatDate(start, { month: 'long', day: 'numeric' })} - ${formatDate(end, { month: 'long', day: 'numeric' })}`;
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'week-view';
         for (let i = 0; i < 7; i++) {
@@ -385,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayElem = createDayElement(day);
             schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+                .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElem.element);
         }
@@ -404,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (day.getMonth() !== currentDate.getMonth()) dayElem.element.classList.add('other-month');
             schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+                .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElem.element);
         }
@@ -425,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleEndTime = new Date(`${s.date}T${s.startTime}`);
                 scheduleEndTime.setHours(scheduleEndTime.getHours() + 1);
             } else {
-                return false; 
+                return false;
             }
             return scheduleEndTime > now; // 終了時刻が未来のものだけ
         });
@@ -439,21 +445,21 @@ document.addEventListener('DOMContentLoaded', () => {
             .forEach(s => {
                 const li = document.createElement('li');
                 const startTime = s.startTime || s.time;
-                const endTime = s.endTime || '( 1h )'; 
+                const endTime = s.endTime || '( 1h )';
 
                 li.innerHTML = `
                     <span class="schedule-item-content">
-                        <strong>${s.date} (${formatDate(new Date(s.date), {weekday:'short'})})</strong>
+                        <strong>${s.date} (${formatDate(new Date(s.date), { weekday: 'short' })})</strong>
                         <span>${startTime} - ${endTime}</span>
                         ${s.text}
                     </span>
                     <button class="delete-btn" title="削除"><i class="fas fa-trash-alt"></i></button>`;
-                
+
                 li.dataset.date = s.date;
                 li.dataset.text = s.text;
-                if(s.startTime) li.dataset.startTime = s.startTime;
-                if(s.endTime) li.dataset.endTime = s.endTime;
-                if(s.time) li.dataset.time = s.time; 
+                if (s.startTime) li.dataset.startTime = s.startTime;
+                if (s.endTime) li.dataset.endTime = s.endTime;
+                if (s.time) li.dataset.time = s.time;
 
                 scheduleElements.list.appendChild(li);
             });
@@ -464,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'calendar-day';
         if (date.toDateString() === new Date().toDateString()) element.classList.add('today');
         const headerStyle = currentView === 'month' ? 'style="text-align: left; padding: 5px; border-bottom: none;"' : '';
-        const dayNumber = (currentView === 'month' && date.getDate() === 1) ? `${date.getMonth()+1}/${date.getDate()}` : date.getDate();
+        const dayNumber = (currentView === 'month' && date.getDate() === 1) ? `${date.getMonth() + 1}/${date.getDate()}` : date.getDate();
         element.innerHTML = `<div class="calendar-day-header" ${headerStyle}>${dayNumber}</div><div class="calendar-day-body"></div>`;
         return { element, body: element.querySelector('.calendar-day-body') };
     }
@@ -502,11 +508,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (usersData[username]?.password === password) await loginUser(username, password);
             else alert('ユーザー名またはパスワードが間違っています。');
         });
-        buttons.logout.addEventListener('click', () => { 
-            currentUser = null; 
+        buttons.logout.addEventListener('click', () => {
+            currentUser = null;
             accessToken = null;
-            sessionStorage.removeItem('user'); 
-            showScreen('welcome-container'); 
+            sessionStorage.removeItem('user');
+            showScreen('welcome-container');
         });
 
         // サイドバー予定追加フォーム
@@ -517,12 +523,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const endTimeStr = document.getElementById('schedule-end-time').value;
             const text = document.getElementById('schedule-text').value.trim();
 
-            if(!date || !startTimeStr || !endTimeStr || !text) return alert('全て入力してください。');
+            if (!date || !startTimeStr || !endTimeStr || !text) return alert('全て入力してください。');
             if (endTimeStr <= startTimeStr) return alert('終了時刻は開始時刻より後に設定してください。');
-            
+
             const start = new Date(`${date}T${startTimeStr}`);
             const end = new Date(`${date}T${endTimeStr}`);
-            
+
             await addScheduleToCalendar(text, start, end); // 共通関数を使用
             e.target.reset();
         });
@@ -532,34 +538,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteButton = e.target.closest('.delete-btn');
             if (deleteButton) {
                 const li = deleteButton.parentElement;
-                const { date, text, startTime, endTime, time } = li.dataset; 
+                const { date, text, startTime, endTime, time } = li.dataset;
 
                 const usersData = await getUsersData();
                 const schedules = usersData[currentUser]?.schedules || [];
-                
+
                 let index = -1;
                 if (startTime && endTime) {
                     // 新しいデータ
-                    index = schedules.findIndex(s => 
-                        s.date === date && 
-                        s.startTime === startTime && 
-                        s.endTime === endTime && 
+                    index = schedules.findIndex(s =>
+                        s.date === date &&
+                        s.startTime === startTime &&
+                        s.endTime === endTime &&
                         s.text === text
                     );
                 } else if (time) {
                     // 古いデータ
-                    index = schedules.findIndex(s => 
-                        s.date === date && 
-                        s.time === time && 
+                    index = schedules.findIndex(s =>
+                        s.date === date &&
+                        s.time === time &&
                         s.text === text &&
-                        !s.startTime 
+                        !s.startTime
                     );
                 }
 
-                if (index > -1) { 
-                    schedules.splice(index, 1); 
-                    await saveUsersData(usersData); 
-                    await updateView(); 
+                if (index > -1) {
+                    schedules.splice(index, 1);
+                    await saveUsersData(usersData);
+                    await updateView();
                 } else {
                     console.error("削除対象のデータが見つかりません:", li.dataset);
                 }
@@ -583,8 +589,8 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.dayView.addEventListener('click', () => { currentView = 'day'; updateView(); });
         buttons.weekView.addEventListener('click', () => { currentView = 'week'; updateView(); });
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
-        
-        buttons.googleSync.addEventListener('click', () => { 
+
+        buttons.googleSync.addEventListener('click', () => {
             syncSchedulesToGoogle();
         });
 
@@ -609,8 +615,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ★★★ 初期化処理 (Google APIロード安定化) ★★★ ---
     async function initializeApp() {
         // 先にリスナーを登録 (重要)
-        setupEventListeners(); 
-        
+        setupEventListeners();
+
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
@@ -622,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             showScreen('welcome-container');
         }
-        
+
         // Google APIのロードを待機
         await checkGoogleApiLoad();
     }
@@ -632,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let gapiReady = false;
         let gisReady = false;
         let attempts = 0;
-        
+
         while (attempts < 50) { // 最大5秒待つ (100ms * 50)
             // gapi.load が存在するか、google.accounts が存在するかで判断
             gapiReady = (typeof gapi !== 'undefined' && gapi.load);
@@ -640,12 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (gapiReady && gisReady) {
                 // グローバルに定義された関数を実行
-                if(typeof window.gapiLoaded === 'function') window.gapiLoaded(); 
-                if(typeof window.gisLoaded === 'function') window.gisLoaded();
+                if (typeof window.gapiLoaded === 'function') window.gapiLoaded();
+                if (typeof window.gisLoaded === 'function') window.gisLoaded();
                 console.log("Google API loaded.");
                 return;
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
