@@ -98,7 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             clearInterval(timerInterval);
             const endTime = new Date();
-            addNewStudyItem(`【${timerSubject.value}】${timerContent.value}`, startTime, endTime);
+
+            // ★ 変更: 期限を取得
+            const deadline = document.getElementById('timer-deadline').value || null;
+
+            addNewStudyItem(
+                `【${timerSubject.value}】${timerContent.value}`, 
+                startTime, 
+                endTime,
+                deadline // ★ 追加: 期限を渡す
+            );
             
             timerToggleBtn.textContent = 'スタート';
             timerToggleBtn.classList.remove('is-timing');
@@ -107,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timerContent.disabled = false;
             timerSubject.value = '';
             timerContent.value = '';
+            document.getElementById('timer-deadline').value = ''; // ★ 追加: 期限もリセット
             timerLogModal.classList.add('hidden');
         }
     });
@@ -128,10 +138,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = document.getElementById('manual-date').value;
         const startTimeStr = document.getElementById('manual-start-time').value;
         const duration = parseInt(document.getElementById('manual-duration').value);
+        
+        // ★ 変更: 期限を取得
+        const deadline = document.getElementById('manual-deadline').value || null;
+        
         const startDateTime = new Date(`${date}T${startTimeStr}`);
         const endDateTime = new Date(startDateTime.getTime() + duration * 60 * 1000);
         
-        addNewStudyItem(`【${subject}】${content}`, startDateTime, endDateTime);
+        addNewStudyItem(
+            `【${subject}】${content}`, 
+            startDateTime, 
+            endDateTime,
+            deadline // ★ 追加: 期限を渡す
+        );
         
         manualLogForm.reset();
         manualLogModal.classList.add('hidden');
@@ -145,23 +164,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = () => new Date(new Date().setHours(0, 0, 0, 0)); // 今日の0時0分
 
     /**
-     * (新設) 新しい勉強項目をDBとカレンダーに追加する
+     * (変更) 新しい勉強項目をDBとカレンダーに追加する
      * @param {string} title - 勉強内容
      * @param {Date} start - 開始日時
      * @param {Date} end - 終了日時
+     * @param {string | null} deadline - (★追加) 期限日 (YYYY-MM-DD)
      */
-    async function addNewStudyItem(title, start, end) {
+    async function addNewStudyItem(title, start, end, deadline = null) {
         // ★ 1. データを取得
         const usersData = await getUsersData();
         if (!usersData[currentUser]) usersData[currentUser] = { password: '', schedules: [], reviewItems: [] };
         if (!usersData[currentUser].reviewItems) usersData[currentUser].reviewItems = [];
 
+        // ★ 変更: タイトルに期限を追加
+        const itemTitle = deadline ? `${title} [期限: ${deadline}]` : title;
+
         // 2. 勉強した「元ネタ」を reviewItems リストに保存 (ローカル)
         const reviewItem = {
             id: `${Date.now()}-${title}`, // 固有ID
-            text: title,
+            text: itemTitle, // ★ 変更
             originalStartTime: formatTime(start), 
             originalEndTime: formatTime(end),
+            deadline: deadline, // ★ 追加: 期限データを保持
             reviewCount: 0,
             easeFactor: 2.5,
             interval: 0,
@@ -174,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             date: formatDate(start),
             startTime: formatTime(start),
             endTime: formatTime(end),
-            text: title,
+            text: itemTitle, // ★ 変更
             isReview: false,
             reviewItemId: null 
         };
@@ -249,19 +273,76 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             // 5. 習得済みでない場合、次の復習日を計算してカレンダーに登録
-            const nextDate = today();
-            nextDate.setDate(nextDate.getDate() + item.interval);
             
-            item.nextReviewDate = formatDate(nextDate);
+            // 5a. SM-2による標準の次の復習日を計算
+            const standardNextDate = today(); // 今日の0時
+            standardNextDate.setDate(standardNextDate.getDate() + item.interval);
+            
+            let finalNextDate = standardNextDate; // 最終的な復習日
+
+            // 5b. (★新ロジック) 期限（Deadline）が設定されているかチェック
+            if (item.deadline) {
+                const deadlineDate = new Date(`${item.deadline}T00:00:00`); // 期限日の0時
+                const todayDate = today();
+
+                // 5c. 期限が有効か (今日以降か)
+                if (deadlineDate >= todayDate) {
+                    
+                    // 5d. SM-2の結果が期限を超えるか？
+                    if (standardNextDate > deadlineDate) {
+                        
+                        // --- 圧縮ロジック発動 ---
+                        
+                        // 習得までに必要な残りの復習回数を計算 (例: 5回完了)
+                        // (現在 reviewCount がインクリメントされた後なので、(5 - item.reviewCount) で正しい)
+                        const remainingReviewsNeeded = Math.max(1, 5 - item.reviewCount); // 最低1回
+                        
+                        // 期限までの残り日数を計算 (明日は1、今日は0)
+                        const daysUntilDeadline = Math.max(0, Math.floor((deadlineDate - todayDate) / (1000 * 60 * 60 * 24)));
+
+                        let compressedInterval;
+
+                        if (daysUntilDeadline === 0) {
+                            // 期限が今日 (だが、今日はもう復習した)
+                            // → 最短の「明日」に設定
+                            compressedInterval = 1;
+                        } else if (daysUntilDeadline < remainingReviewsNeeded) {
+                            // 残り日数 < 残り回数 (例: 2日で3回)
+                            // → 毎日やるしかない (間隔 = 1日)
+                            compressedInterval = 1;
+                        } else {
+                            // 残り日数 >= 残り回数 (例: 10日で3回)
+                            // 均等割り (例: 10 / 3 = 3.33 -> 3日ごと)
+                            compressedInterval = Math.floor(daysUntilDeadline / remainingReviewsNeeded);
+                        }
+                        
+                        // 間隔は最低でも1日 (今日復習したため)
+                        const finalInterval = Math.max(1, compressedInterval);
+                        
+                        finalNextDate = today();
+                        finalNextDate.setDate(finalNextDate.getDate() + finalInterval);
+
+                        // 最終チェック: 圧縮した結果が期限を超えていないか？ (通常超えないはずだが念のため)
+                        if (finalNextDate > deadlineDate) {
+                            finalNextDate = deadlineDate;
+                        }
+                    }
+                }
+            }
+            
+            // 5e. 最終決定した日付でカレンダーに登録
+            item.nextReviewDate = formatDate(finalNextDate);
 
             const reviewSchedule = {
                 date: item.nextReviewDate,
                 startTime: item.originalStartTime, 
                 endTime: item.originalEndTime,
+                // item.text は既に [期限: ...] を含んでいる
                 text: `(復習${item.reviewCount}回目) ${item.text}`,
                 isReview: true,
                 reviewItemId: item.id 
             };
+            
             schedules.push(reviewSchedule);
         }
         

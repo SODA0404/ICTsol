@@ -111,6 +111,8 @@
                     <form id="timer-log-form">
                         <input type="text" id="timer-subject" placeholder="科目" required>
                         <input type="text" id="timer-content" placeholder="勉強内容" required>
+                        <label>期限（オプション）</label>
+                        <input type="date" id="timer-deadline">
                         <div id="timer-display">00:00:00</div>
                         <button type="button" id="timer-toggle-btn">スタート</button>
                     </form>
@@ -130,6 +132,8 @@
                         <input type="time" id="manual-start-time" required>
                         <label>勉強時間（分）</label>
                         <input type="number" id="manual-duration" placeholder="例: 60" min="1" required>
+                        <label>期限（オプション）</label>
+                        <input type="date" id="manual-deadline">
                         <button type="submit">この内容で登録</button>
                     </form>
                 </div>
