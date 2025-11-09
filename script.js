@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const CLIENT_ID = '163499005911-6v32s29gtk4t4oegd4077q4k5u0aa4ps.apps.googleusercontent.com';
     const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
     const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+    // ▼▼▼ お問い合わせ機能のため追加 ▼▼▼
+    const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSepILHkk2k1Zxy6XU_zdXUXL-66a9MBFTOZQMxnoQ39AvNA_Q/viewform?usp=dialog'; 
+    // ▼▼▼ 履歴機能のため追加 ▼▼▼
+    const STUDY_HISTORY_KEY = 'studyLogHistory';
+    const MAX_HISTORY_ITEMS = 20; // 履歴の最大保存件数
+    // ▲▲▲ 追加 ▲▲▲
 
     // --- 要素取得 (全機能統合) ---
     const views = document.querySelectorAll('.view');
@@ -48,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showDeleteAccount: document.getElementById('show-delete-account-btn'),
         confirmDelete: document.getElementById('confirm-delete-btn'),
         // (編集モーダル用)
-        eventDetailDelete: document.getElementById('event-detail-delete-btn')
+        eventDetailDelete: document.getElementById('event-detail-delete-btn'),
+        // 追加
+        contact: document.getElementById('contact-btn')
     };
     const scheduleElements = {
         list: document.getElementById('schedule-list'),
@@ -64,6 +72,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // (編集モーダル用)
     const eventDetailModal = document.getElementById('event-detail-modal');
 
+    // 追加
+    // タイマーモーダル用
+    const timerSubject = document.getElementById('timer-subject');
+    const timerContent = document.getElementById('timer-content');
+    const timerSubjectHistory = document.getElementById('timer-subject-history');
+    const timerContentHistory = document.getElementById('timer-content-history');
+
+    // 手動モーダル用
+    const manualSubject = document.getElementById('manual-subject');
+    const manualContent = document.getElementById('manual-content');
+    const manualSubjectHistory = document.getElementById('manual-subject-history');
+    const manualContentHistory = document.getElementById('manual-content-history');
+    // ここまで
 
     // --- 状態管理 ---
     let currentUser = null;
@@ -71,22 +92,162 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDate = new Date();
     let tokenClient, gapiInited = false, gisInited = false, accessToken = null;
 
+    // ここから追加
+    /**
+     * localStorageから勉強履歴を取得
+     * @returns {Array} 履歴オブジェクトの配列
+     */
+    function getStudyHistory() {
+        try {
+            const history = localStorage.getItem(STUDY_HISTORY_KEY);
+            return history ? JSON.parse(history) : [];
+        } catch (e) {
+            console.error("Failed to parse study history", e);
+            localStorage.removeItem(STUDY_HISTORY_KEY); // 壊れたデータを削除
+            return [];
+        }
+    }
+
+    /**
+     * 勉強履歴をlocalStorageに保存
+     * @param {string} subject - 科目
+     * @param {string} content - 勉強内容
+     */
+    function saveStudyHistory(subject, content) {
+        if (!subject || !content) return; // 空の場合は保存しない
+
+        let history = getStudyHistory();
+
+        // 既に同じ組み合わせが存在するかチェック (大文字小文字を区別せず)
+        const subjectLower = subject.toLowerCase();
+        const contentLower = content.toLowerCase();
+        const existingIndex = history.findIndex(item =>
+            item.subject.toLowerCase() === subjectLower &&
+            item.content.toLowerCase() === contentLower
+        );
+
+        // 存在する場合は、一度削除して先頭に移動させる
+        if (existingIndex > -1) {
+            history.splice(existingIndex, 1);
+        }
+
+        // 新しい履歴を先頭に追加
+        history.unshift({ subject, content });
+
+        // 履歴が最大件数を超えたら古いものから削除
+        if (history.length > MAX_HISTORY_ITEMS) {
+            history = history.slice(0, MAX_HISTORY_ITEMS);
+        }
+
+        localStorage.setItem(STUDY_HISTORY_KEY, JSON.stringify(history));
+    }
+
+    /**
+     * 履歴リスト(ul)に項目を挿入する（共通関数）
+     * @param {HTMLElement} listElement - 挿入先の <ul> 要素
+     * @param {Array<string>} items - 表示する文字列の配列
+     * @param {HTMLInputElement} inputElement - クリック時に値を反映する <input> 要素
+     */
+    function renderHistoryDropdown(listElement, items, inputElement) {
+        listElement.innerHTML = ''; // クリア
+
+        // 重複を除外（念のため）
+        const uniqueItems = [...new Set(items)];
+
+        if (uniqueItems.length === 0) {
+            listElement.innerHTML = '<li class="no-history">履歴はありません</li>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        uniqueItems.forEach(itemText => {
+            const li = document.createElement('li');
+            li.textContent = itemText; // textContentでサニタイズ
+
+            li.addEventListener('click', (e) => {
+                e.stopPropagation(); // 外側クリックイベントを止める
+                inputElement.value = itemText;
+                listElement.classList.add('hidden');
+
+                // もし科目が変更されたら、内容の履歴も更新トリガーをかける
+                if (inputElement.id === 'timer-subject' || inputElement.id === 'manual-subject') {
+                    // 'input' イベントを発火させて、連動するリスナーを動かす
+                    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            fragment.appendChild(li);
+        });
+        listElement.appendChild(fragment);
+    }
+
+    /**
+     * 科目の履歴ドロップダウンを生成・表示
+     * @param {HTMLElement} listElement - 挿入先の <ul> 要素
+     * @param {HTMLInputElement} inputElement - 反映先の <input> 要素
+     */
+    function populateSubjectHistory(listElement, inputElement) {
+        const history = getStudyHistory(); // [{subject, content}, ...]
+        // 科目だけを抽出し、重複を削除
+        const subjects = [...new Set(history.map(item => item.subject))];
+        renderHistoryDropdown(listElement, subjects, inputElement);
+    }
+
+    /**
+     * 勉強内容の履歴ドロップダウンを（科目で絞り込んで）生成・表示
+     * @param {HTMLElement} listElement - 挿入先の <ul> 要素
+     * @param {HTMLInputElement} inputElement - 反映先の <input> 要素
+     * @param {string} selectedSubject - 絞り込み対象の科目名
+     */
+    function populateContentHistory(listElement, inputElement, selectedSubject) {
+        const history = getStudyHistory();
+
+        let contents = [];
+        // 科目が選択されている場合のみ、絞り込みを実行（要望通り）
+        if (selectedSubject) {
+            contents = history
+                .filter(item => item.subject.toLowerCase() === selectedSubject.toLowerCase())
+                .map(item => item.content);
+        }
+        // 科目が空欄の場合は、内容は何も表示しない（空の配列
+
+        renderHistoryDropdown(listElement, contents, inputElement);
+    }
+    //追加ここまで
+
     // ===== ▼▼▼ 勉強記録機能 (復習セット機能) ▼▼▼ =====
     const addStudyLogBtn = document.getElementById('add-study-log-btn');
     const studyChoiceModal = document.getElementById('study-choice-modal');
     const timerLogModal = document.getElementById('timer-log-modal');
     const manualLogModal = document.getElementById('manual-log-modal');
+
+    // ▼▼▼ 修正 ▼▼▼
+    // 変数をここで定義
     const showTimerBtn = document.getElementById('show-timer-btn');
     const showManualBtn = document.getElementById('show-manual-btn');
+
+    // 履歴読み込み機能を追加したリスナー
+    showTimerBtn.addEventListener('click', () => {
+        studyChoiceModal.classList.add('hidden');
+        timerLogModal.classList.remove('hidden');
+    });
+
+    showManualBtn.addEventListener('click', () => {
+        studyChoiceModal.classList.add('hidden');
+        manualLogModal.classList.remove('hidden');
+
+        // このモーダルの入力欄要素を取得
+        const manualSubjectInput = document.getElementById('manual-subject');
+        const manualContentInput = document.getElementById('manual-content');
+    });
+
+    // タイマー関連の要素
     const timerDisplay = document.getElementById('timer-display');
     const timerToggleBtn = document.getElementById('timer-toggle-btn');
-    const timerSubject = document.getElementById('timer-subject');
-    const timerContent = document.getElementById('timer-content');
     const manualLogForm = document.getElementById('manual-log-form');
 
+    // 「勉強時間を記録」ボタンのリスナー
     addStudyLogBtn.addEventListener('click', () => studyChoiceModal.classList.remove('hidden'));
-    showTimerBtn.addEventListener('click', () => { studyChoiceModal.classList.add('hidden'); timerLogModal.classList.remove('hidden'); });
-    showManualBtn.addEventListener('click', () => { studyChoiceModal.classList.add('hidden'); manualLogModal.classList.remove('hidden'); });
+    // ▲▲▲ ここまで ▲▲▲
 
     // タイマー機能
     let timerInterval = null;
@@ -104,7 +265,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             clearInterval(timerInterval);
             const endTime = new Date();
-            addScheduleToCalendar(`【${timerSubject.value}】${timerContent.value}`, startTime, endTime, true); 
+            // ▼▼▼ 履歴保存のため追加 ▼▼▼
+            saveStudyHistory(timerSubject.value, timerContent.value);
+            addScheduleToCalendar(`【${timerSubject.value}】${timerContent.value}`, startTime, endTime, true);
+
             timerToggleBtn.textContent = 'スタート';
             timerToggleBtn.classList.remove('is-timing');
             timerDisplay.textContent = '00:00:00';
@@ -132,12 +296,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = document.getElementById('manual-content').value;
         const date = document.getElementById('manual-date').value;
         const startTimeStr = document.getElementById('manual-start-time').value;
-        const endTimeStr = document.getElementById('manual-end-time').value; 
-        const deadlineStr = document.getElementById('manual-deadline').value; 
+        const endTimeStr = document.getElementById('manual-end-time').value;
+        const deadlineStr = document.getElementById('manual-deadline').value;
+        // ▼▼▼ 履歴保存のため追加 ▼▼▼
+        saveStudyHistory(subject, content);
 
         const initialStart = new Date(`${date}T${startTimeStr}`);
-        const initialEnd = new Date(`${date}T${endTimeStr}`); 
-        const deadline = deadlineStr ? new Date(`${deadlineStr}T23:59:59`) : null; 
+        const initialEnd = new Date(`${date}T${endTimeStr}`);
+        const deadline = deadlineStr ? new Date(`${deadlineStr}T23:59:59`) : null;
 
         if (isNaN(initialStart.getTime()) || isNaN(initialEnd.getTime())) {
             return alert('日付または時刻の形式が正しくありません。');
@@ -153,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. 初回の勉強を登録
         addScheduleToData(usersData, `【${subject}】${content} (初回)`, initialStart, initialEnd, studySetId, true);
 
-        const proposalIntervals = [1, 3, 7, 30]; 
+        const proposalIntervals = [1, 3, 7, 30];
         const scheduledDates = [];
         const formatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
 
@@ -165,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (deadline && preferredStart > deadline) {
                 continue;
             }
-            
+
             const schedules = usersData[currentUser]?.schedules || [];
             const foundSlotStart = findFreeSlot(preferredStart, durationMs, schedules);
 
@@ -197,9 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function addScheduleToCalendar(title, start, end, showAlert = false) {
         const usersData = await getUsersData();
-        addScheduleToData(usersData, title, start, end, null, false); 
-        await saveUsersData(usersData); 
-        await updateView(); 
+        addScheduleToData(usersData, title, start, end, null, false);
+        await saveUsersData(usersData);
+        await updateView();
         if (showAlert) {
             alert('予定をカレンダーに登録しました！');
         }
@@ -216,8 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
             startTime: formatTime(start),
             endTime: formatTime(end),
             text: title,
-            studySetId: studySetId, 
-            isInitial: isInitial    
+            studySetId: studySetId,
+            isInitial: isInitial
         };
         usersData[currentUser].schedules.push(newSchedule);
     }
@@ -246,10 +412,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isOverlapping = (proposalStart < existingEnd) && (proposalEnd > existingStart);
                 if (isOverlapping) {
                     conflictFound = true;
-                    proposalStart = new Date(existingEnd.getTime() + 1000); 
+                    proposalStart = new Date(existingEnd.getTime() + 1000);
                     proposalEnd = new Date(proposalStart.getTime() + durationMs);
                     if (proposalStart.toISOString().split('T')[0] !== targetDateStr) {
-                        return null; 
+                        return null;
                     }
                     break;
                 }
@@ -268,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (screenIdToShow === 'schedule-container') {
             if (globalThemeToggle && headerRight && logoutButton) {
-                headerRight.insertBefore(globalThemeToggle, logoutButton); 
+                headerRight.insertBefore(globalThemeToggle, logoutButton);
                 globalThemeToggle.style.position = 'relative';
                 globalThemeToggle.style.top = 'auto';
                 globalThemeToggle.style.right = 'auto';
@@ -278,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             if (globalThemeToggle && bodyElement) {
-                bodyElement.appendChild(globalThemeToggle); 
+                bodyElement.appendChild(globalThemeToggle);
                 globalThemeToggle.style.position = 'fixed';
                 globalThemeToggle.style.top = '20px';
                 globalThemeToggle.style.right = '20px';
@@ -323,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (s.endTime) {
                 endDate = new Date(`${s.date}T${s.endTime}`);
             } else {
-                endDate = new Date(startDate.getTime() + 60 * 60 * 1000); 
+                endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
             }
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
             const event = {
@@ -382,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleElements.calendarView.innerHTML = '';
         scheduleElements.calendarView.className = 'day-view';
         const dayElem = createDayElement(currentDate);
-        drawTimeSlots(dayElem.body); 
+        drawTimeSlots(dayElem.body);
         schedules
             .filter(s => s.date === currentDate.toISOString().split('T')[0])
             .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
@@ -405,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
                 .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
-                .forEach(s => dayElem.body.appendChild(createScheduleItem(s))); 
+                .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
             scheduleElements.calendarView.appendChild(dayElem.element);
         }
     }
@@ -440,14 +606,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (s.time) {
                 scheduleEndTime = new Date(`${s.date}T${s.time}`);
                 scheduleEndTime.setHours(scheduleEndTime.getHours() + 1);
-            } else if (s.startTime) { 
+            } else if (s.startTime) {
                 scheduleEndTime = new Date(`${s.date}T${s.startTime}`);
                 scheduleEndTime.setHours(scheduleEndTime.getHours() + 1);
             } else {
                 return false;
             }
             if (isNaN(scheduleEndTime.getTime())) return false;
-            return scheduleEndTime > now; 
+            return scheduleEndTime > now;
         });
         futureSchedules
             .sort((a, b) => {
@@ -491,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawTimeSlots(container) {
-        if (currentView === 'month' || currentView === 'week') return; 
+        if (currentView === 'month' || currentView === 'week') return;
         const fragment = document.createDocumentFragment();
         for (let i = 0; i < 24; i++) {
             const slot = document.createElement('div');
@@ -507,37 +673,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createScheduleItem(schedule) {
         const item = document.createElement('div');
-        item.className = 'calendar-schedule-item'; 
+        item.className = 'calendar-schedule-item';
         const startTimeStr = schedule.startTime || schedule.time;
-        
+
         if (currentView === 'day') {
-            const pxPerHour = 60; 
+            const pxPerHour = 60;
             let startMinutes = 0;
             let endMinutes = 0;
-            if (schedule.startTime) { 
+            if (schedule.startTime) {
                 const [startHour, startMin] = schedule.startTime.split(':').map(Number);
                 startMinutes = startHour * 60 + startMin;
                 if (schedule.endTime) {
                     const [endHour, endMin] = schedule.endTime.split(':').map(Number);
                     endMinutes = endHour * 60 + endMin;
                 } else {
-                    endMinutes = startMinutes + 60; 
+                    endMinutes = startMinutes + 60;
                 }
-            } else if (schedule.time) { 
+            } else if (schedule.time) {
                 const [startHour, startMin] = schedule.time.split(':').map(Number);
                 startMinutes = startHour * 60 + startMin;
-                endMinutes = startMinutes + 60; 
+                endMinutes = startMinutes + 60;
             }
-            const durationMinutes = Math.max(15, endMinutes - startMinutes); 
+            const durationMinutes = Math.max(15, endMinutes - startMinutes);
             const top = (startMinutes / 60) * pxPerHour;
             let height = (durationMinutes / 60) * pxPerHour;
-            height = Math.max(15, height - 2); 
+            height = Math.max(15, height - 2);
             item.style.top = `${top}px`;
             item.style.height = `${height}px`;
             if (durationMinutes >= 30) {
-                 item.innerHTML = `<strong>${startTimeStr}</strong> ${schedule.text}`;
+                item.innerHTML = `<strong>${startTimeStr}</strong> ${schedule.text}`;
             } else {
-                 item.textContent = `${startTimeStr} ${schedule.text}`;
+                item.textContent = `${startTimeStr} ${schedule.text}`;
             }
         } else {
             item.textContent = `${startTimeStr} ${schedule.text}`;
@@ -598,8 +764,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (endTimeStr <= startTimeStr) return alert('終了時刻は開始時刻より後に設定してください。');
             const start = new Date(`${date}T${startTimeStr}`);
             const end = new Date(`${date}T${endTimeStr}`);
-            await addScheduleToCalendar(text, start, end, false); 
-            alert('予定を追加しました。'); 
+            await addScheduleToCalendar(text, start, end, false);
+            alert('予定を追加しました。');
             e.target.reset();
         });
 
@@ -633,6 +799,16 @@ document.addEventListener('DOMContentLoaded', () => {
             syncSchedulesToGoogle();
         });
 
+        // ▼▼▼ お問い合わせ機能のため追加 ▼▼▼
+        buttons.contact.addEventListener('click', () => {
+            if (GOOGLE_FORM_URL === 'YOUR_GOOGLE_FORM_URL_HERE' || !GOOGLE_FORM_URL) {
+                return alert('開発者: script.js の GOOGLE_FORM_URL を設定してください。');
+            }
+            // 新しいタブでGoogleフォームを開く
+            window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer');
+        });
+        // ▲▲▲ 追加 ▲▲▲
+
         buttons.themeToggle.addEventListener('change', () => {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
@@ -642,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
             accountMenu.classList.toggle('hidden');
         });
         document.addEventListener('click', (e) => {
-            if (!accountMenu.classList.contains('hidden') && !accountMenu.contains(e.target) && !buttons.accountIcon.contains(e.target) ) {
+            if (!accountMenu.classList.contains('hidden') && !accountMenu.contains(e.target) && !buttons.accountIcon.contains(e.target)) {
                 accountMenu.classList.add('hidden');
             }
         });
@@ -654,7 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteAccountModal.classList.remove('hidden');
             accountMenu.classList.add('hidden');
         });
-        
+
         modalCloseButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 studyChoiceModal.classList.add('hidden');
@@ -662,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 manualLogModal.classList.add('hidden');
                 changePasswordModal.classList.add('hidden');
                 deleteAccountModal.classList.add('hidden');
-                eventDetailModal.classList.add('hidden'); 
+                eventDetailModal.classList.add('hidden');
                 forms.changePassword.reset();
             });
         });
@@ -677,7 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const usersData = await getUsersData();
             const storedUserData = JSON.parse(sessionStorage.getItem('user'));
             if (!storedUserData || usersData[currentUser]?.password !== oldPassword || storedUserData.password !== oldPassword) {
-                 return alert('現在のパスワードが間違っています。');
+                return alert('現在のパスワードが間違っています。');
             }
             usersData[currentUser].password = newPassword;
             await saveUsersData(usersData);
@@ -721,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     start.setHours(start.getHours() + 1);
                     forms.eventDetail.elements['event-detail-end-time'].value = start.toTimeString().split(' ')[0].substring(0, 5);
                 } else {
-                     forms.eventDetail.elements['event-detail-end-time'].value = '';
+                    forms.eventDetail.elements['event-detail-end-time'].value = '';
                 }
             }
             forms.eventDetail.dataset.originalDate = date;
@@ -744,15 +920,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newEndTime <= newStartTime) return alert('終了時刻は開始時刻より後に設定してください。');
 
             const original = forms.eventDetail.dataset;
+
+            // --- 元データが 'time' (旧形式) の場合の互換性処理 ---
+            if (!original.originalStartTime && original.originalTime) {
+                original.originalStartTime = original.originalTime;
+
+                const start = new Date(`${original.originalDate}T${original.originalTime}`);
+                if (!isNaN(start.getTime())) {
+                    start.setHours(start.getHours() + 1);
+                    original.originalEndTime = start.toTimeString().split(' ')[0].substring(0, 5);
+                } else {
+                    original.originalEndTime = original.originalStartTime; // フォールバック
+                }
+            }
+            // --- 互換性処理ここまで ---
+
             const usersData = await getUsersData();
             const schedules = usersData[currentUser]?.schedules || [];
 
-            const index = schedules.findIndex(s => 
+            const index = schedules.findIndex(s =>
                 s.date === original.originalDate &&
                 s.text === original.originalText &&
-                (s.startTime || '') === original.originalStartTime &&
-                (s.endTime || '') === original.originalEndTime &&
-                (s.time || '') === original.originalTime &&
+                (s.startTime || '') === (original.originalStartTime || '') && // 互換性のため || '' を追加
+                (s.endTime || '') === (original.originalEndTime || '') &&     // 互換性のため || '' を追加
+                (s.time || '') === (original.originalTime || '') &&
                 (s.studySetId || '') === (original.originalStudySetId || '') &&
                 (s.isInitial ? String(s.isInitial) : '') === (original.originalIsInitial || '')
             );
@@ -763,28 +954,80 @@ document.addEventListener('DOMContentLoaded', () => {
                     date: newDate,
                     startTime: newStartTime,
                     endTime: newEndTime,
-                    text: newText, 
-                    studySetId: schedules[index].studySetId, 
+                    text: newText,
+                    studySetId: schedules[index].studySetId,
                     isInitial: schedules[index].isInitial
                 };
 
-                // 2. もしこれが復習セットの初回なら、他の復習予定のテキストも更新
+                // 2. もしこれが復習セットの初回なら、関連する予定も更新
                 const studySetId = original.originalStudySetId;
                 // (isInitialはdataset経由で文字列 'true' になるため、'true'で比較)
                 const isInitial = original.originalIsInitial === 'true';
 
                 if (studySetId && isInitial) {
-                    // (初回) サフィックスを除去したテキストを準備
+                    // --- 2a. テキストの更新準備 ---
                     const baseTextOriginal = original.originalText.replace(/\s*\(初回\)$/, '').trim();
                     const baseTextNew = newText.replace(/\s*\(初回\)$/, '').trim();
-                    
-                    if (baseTextOriginal !== baseTextNew) {
-                         // schedules全体をループして、関連する復習予定を更新
+                    const textChanged = baseTextOriginal !== baseTextNew;
+
+                    // --- 2b. 日時の更新準備 ---
+                    const originalStartDateTime = new Date(`${original.originalDate}T${original.originalStartTime}`);
+                    const newStartDateTime = new Date(`${newDate}T${newStartTime}`);
+                    const originalEndDateTime = new Date(`${original.originalDate}T${original.originalEndTime}`);
+                    const newEndDateTime = new Date(`${newDate}T${newEndTime}`);
+
+                    // (パース失敗時は変更なしとみなす)
+                    const validOriginalDates = !isNaN(originalStartDateTime.getTime()) && !isNaN(originalEndDateTime.getTime());
+                    const validNewDates = !isNaN(newStartDateTime.getTime()) && !isNaN(newEndDateTime.getTime());
+
+                    let dateTimeChanged = false;
+                    let durationChanged = false;
+                    let startDiffMs = 0;
+                    let newDurationMs = 0;
+
+                    if (validOriginalDates && validNewDates) {
+                        dateTimeChanged = originalStartDateTime.getTime() !== newStartDateTime.getTime();
+
+                        const originalDurationMs = originalEndDateTime.getTime() - originalStartDateTime.getTime();
+                        newDurationMs = newEndDateTime.getTime() - newStartDateTime.getTime();
+                        durationChanged = originalDurationMs !== newDurationMs;
+
+                        startDiffMs = dateTimeChanged ? (newStartDateTime.getTime() - originalStartDateTime.getTime()) : 0;
+                    }
+
+                    // --- 2c. 変更があれば復習予定に適用 ---
+                    if (textChanged || dateTimeChanged || durationChanged) {
+
                         schedules.forEach(s => {
+                            // 該当セットの、初回以外の予定（＝復習予定）
                             if (s.studySetId === studySetId && !s.isInitial) {
-                                // 古いベーステキストを新しいベーステキストに置換
-                                // (例: "【数学】微分 (復習 1日目)" -> "【数学】積分 (復習 1日目)")
-                                s.text = s.text.replace(baseTextOriginal, baseTextNew);
+
+                                // テキスト更新
+                                if (textChanged) {
+                                    s.text = s.text.replace(baseTextOriginal, baseTextNew);
+                                }
+
+                                // 日時・継続時間更新 (日付パースが成功している場合のみ)
+                                if ((dateTimeChanged || durationChanged) && validOriginalDates && validNewDates) {
+                                    const currentReviewStart = new Date(`${s.date}T${s.startTime}`);
+
+                                    if (!isNaN(currentReviewStart.getTime())) {
+                                        // 新しい開始日時を計算 (日付変更があれば差分を加算)
+                                        const newReviewStart = new Date(currentReviewStart.getTime() + startDiffMs);
+
+                                        // 新しい終了日時を計算 (新しい開始日時 + 新しい継続時間)
+                                        const newReviewEnd = new Date(newReviewStart.getTime() + newDurationMs);
+
+                                        // フォーマット関数を内部で定義
+                                        const formatDate = (date) => date.toISOString().split('T')[0];
+                                        const formatTime = (date) => date.toTimeString().split(' ')[0].substring(0, 5);
+
+                                        // 予定オブジェクトを更新
+                                        s.date = formatDate(newReviewStart);
+                                        s.startTime = formatTime(newReviewStart);
+                                        s.endTime = formatTime(newReviewEnd);
+                                    }
+                                }
                             }
                         });
                     }
@@ -805,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.eventDetailDelete.addEventListener('click', async () => {
             if (!confirm('本当にこの予定を削除しますか？')) return;
             const originalData = forms.eventDetail.dataset;
-            
+
             const deleted = await deleteScheduleItem({
                 date: originalData.originalDate,
                 text: originalData.originalText,
@@ -821,10 +1064,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('予定を削除しました。');
             } else {
                 if (!originalData.originalStudySetId) {
-                     alert('削除対象の予定が見つかりませんでした。');
+                    alert('削除対象の予定が見つかりませんでした。');
                 }
             }
+        }); // ★★★ ここで eventDetailDelete のリスナーが終了 ★★★
+
+        // ▼▼▼ 修正 ▼▼▼
+        // 以下の履歴リスナーブロックを、setupEventListeners の閉じカッコ「}」の直前に移動しました。
+
+        // ドロップダウンボタンのトグル処理
+        document.querySelectorAll('.history-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 外側クリックイベントを止める
+                const targetListId = btn.dataset.target;
+                const listElement = document.getElementById(targetListId);
+                if (!listElement) return;
+
+                // 他の開いているドロップダウンを（自分以外）閉じる
+                closeAllHistoryDropdowns(listElement);
+
+                // 履歴リストを生成して表示/非表示を切り替え
+                if (listElement.classList.contains('hidden')) {
+                    // ターゲットIDに応じて正しい履歴を生成
+                    if (targetListId === 'timer-subject-history') {
+                        populateSubjectHistory(listElement, timerSubject);
+                    } else if (targetListId === 'timer-content-history') {
+                        populateContentHistory(listElement, timerContent, timerSubject.value);
+                    } else if (targetListId === 'manual-subject-history') {
+                        populateSubjectHistory(listElement, manualSubject);
+                    } else if (targetListId === 'manual-content-history') {
+                        populateContentHistory(listElement, manualContent, manualSubject.value);
+                    }
+                    listElement.classList.remove('hidden');
+                } else {
+                    listElement.classList.add('hidden');
+                }
+            });
         });
+
+        // 科目入力が変更されたら、内容リストの絞り込みを（裏で）更新する
+        function updateContentHistoryOnSubjectChange(subjectInput, contentHistoryList, contentInput) {
+            // 選択肢がクリックされた時(上記li.addEventListener)と、手入力された時
+            populateContentHistory(contentHistoryList, contentInput, subjectInput.value);
+            // ただし、リストは表示しない（ボタンが押された時だけ表示する）
+            contentHistoryList.classList.add('hidden');
+        }
+
+        timerSubject.addEventListener('input', () => {
+            updateContentHistoryOnSubjectChange(timerSubject, timerContentHistory, timerContent);
+        });
+        manualSubject.addEventListener('input', () => {
+            updateContentHistoryOnSubjectChange(manualSubject, manualContentHistory, manualContent);
+        });
+
+        // ドロップダウンの外側をクリックしたら全て閉じる
+        document.addEventListener('click', () => {
+            closeAllHistoryDropdowns();
+        });
+
+        function closeAllHistoryDropdowns(exceptElement = null) {
+            document.querySelectorAll('.history-dropdown').forEach(dropdown => {
+                if (dropdown !== exceptElement) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // ドロップダウン自体がクリックされたときは閉じないようにする
+        document.querySelectorAll('.history-dropdown').forEach(dropdown => {
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
+        });
+        // ▲▲▲ 履歴UI変更 (イベントリスナー) ▲▲▲
     }
 
     // (復習セット一括削除ロジック)
@@ -841,22 +1151,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 usersData[currentUser].schedules = schedules.filter(s => s.studySetId !== studySetId);
                 deleted = usersData[currentUser].schedules.length < originalLength;
             } else {
-                return false; 
+                return false;
             }
-        } 
+        }
         // 2. 復習セットの「復習」予定、または単発の予定が削除された場合
         else {
             let index = -1;
-            if (startTime || endTime) { 
-                index = schedules.findIndex(s => 
+            if (startTime || endTime) {
+                index = schedules.findIndex(s =>
                     s.date === date && s.text === text &&
                     (s.startTime || '') === (startTime || '') &&
                     (s.endTime || '') === (endTime || '') &&
                     (s.studySetId || '') === (studySetId || '')
                 );
-            } else if (time) { 
-                index = schedules.findIndex(s => 
-                    s.date === date && s.text === text && 
+            } else if (time) {
+                index = schedules.findIndex(s =>
+                    s.date === date && s.text === text &&
                     s.time === time && !s.startTime &&
                     (s.studySetId || '') === (studySetId || '')
                 );
@@ -873,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         } else {
             if (studySetId && isInitial === 'true') {
-                 // ユーザーがキャンセル
+                // ユーザーがキャンセル
             } else {
                 console.error("削除対象のデータが見つかりません:", itemData);
             }
@@ -914,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let gapiReady = false;
         let gisReady = false;
         let attempts = 0;
-        while (attempts < 50) { 
+        while (attempts < 50) {
             gapiReady = (typeof gapi !== 'undefined' && gapi.load);
             gisReady = (typeof google !== 'undefined' && google.accounts);
             if (gapiReady && gisReady) {

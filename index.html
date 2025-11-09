@@ -15,7 +15,6 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Google API 関連スクリプト -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     <script src="script.js" defer></script>
@@ -99,6 +98,11 @@
                             <button id="show-delete-account-btn" class="danger">アカウント削除</button>
                         </div>
                     </div>
+                    <!-- 追加 -->
+                    <button id="contact-btn" class="btn-icon" title="お問い合わせ">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <!-- ここまで -->
                     <button id="logout-btn" class="btn-icon" title="ログアウト">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
@@ -121,22 +125,44 @@
                     <span class="close-btn">&times;</span>
                     <h2>タイマーで記録</h2>
                     <form id="timer-log-form">
-                        <input type="text" id="timer-subject" placeholder="科目" required>
-                        <input type="text" id="timer-content" placeholder="勉強内容" required>
+                        <!-- 修正 -->
+                        <div class="input-with-history">
+                            <input type="text" id="timer-subject" placeholder="科目" required>
+                            <button type="button" class="history-toggle-btn" data-target="timer-subject-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="timer-subject-history" class="history-dropdown hidden"></ul>
+                        </div>
+                        <div class="input-with-history">
+                            <input type="text" id="timer-content" placeholder="勉強内容" required>
+                            <button type="button" class="history-toggle-btn" data-target="timer-content-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="timer-content-history" class="history-dropdown hidden"></ul>
+                        </div>
                         <div id="timer-display">00:00:00</div>
+                        <!-- ここまで -->
                         <button type="button" id="timer-toggle-btn">スタート</button>
                     </form>
                 </div>
             </div>
-
             <div id="manual-log-modal" class="modal-overlay hidden">
                 <div class="modal-content">
                     <span class="close-btn">&times;</span>
                     <h2>初回勉強 ＆ 復習セット</h2>
+                    <!-- 修正 -->
                     <form id="manual-log-form">
-                        <input type="text" id="manual-subject" placeholder="科目" required>
-                        <input type="text" id="manual-content" placeholder="勉強内容" required>
-
+                        <div class="input-with-history">
+                            <input type="text" id="manual-subject" placeholder="科目" required>
+                            <button type="button" class="history-toggle-btn" data-target="manual-subject-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="manual-subject-history" class="history-dropdown hidden"></ul>
+                        </div>
+                        <div class="input-with-history">
+                            <input type="text" id="manual-content" placeholder="勉強内容" required>
+                            <button type="button" class="history-toggle-btn" data-target="manual-content-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="manual-content-history" class="history-dropdown hidden"></ul>
+                        </div>
+                        <!-- ここまで -->
                         <label>勉強した日</label>
                         <input type="date" id="manual-date" required>
 
@@ -153,7 +179,6 @@
                     </form>
                 </div>
             </div>
-
             <main class="app-main">
                 <div class="calendar-wrapper">
                     <div id="calendar-container">
@@ -225,7 +250,6 @@
             </div>
         </div>
     </div>
-    <!-- 追加 -->
     <div id="event-detail-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
@@ -251,7 +275,6 @@
             </form>
         </div>
     </div>
-    <!-- ここまで -->
 </body>
 
 </html>
