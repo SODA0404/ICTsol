@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>シンプルスケジュールアプリ</title>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
+
     <link rel="stylesheet" href="style.css">
-    
-    <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://accounts.google.com/gsi/client" defer></script>
+
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     <script src="script.js" defer></script>
 </head>
+
 <body>
 
     <div id="global-theme-toggle">
@@ -35,11 +39,11 @@
                 <p>あなたの毎日を、もっとスマートに。</p>
                 <div class="welcome-buttons">
                     <button id="show-login-btn" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> ログイン</button>
-                    <button id="show-register-btn" class="btn btn-secondary"><i class="fas fa-user-plus"></i> 新規登録</button>
+                    <button id="show-register-btn" class="btn btn-secondary"><i class="fas fa-user-plus"></i>
+                        新規登録</button>
                 </div>
             </div>
         </div>
-
         <div id="register-container" class="container view hidden">
             <div class="auth-card">
                 <h1><i class="fas fa-user-plus"></i> 新規登録</h1>
@@ -57,10 +61,9 @@
                 </form>
             </div>
         </div>
-
         <div id="login-container" class="container view hidden">
             <div class="auth-card">
-                 <h1><i class="fas fa-sign-in-alt"></i> ログイン</h1>
+                <h1><i class="fas fa-sign-in-alt"></i> ログイン</h1>
                 <form id="login-form" class="auth-form">
                     <div class="input-group">
                         <i class="fas fa-user"></i>
@@ -86,19 +89,33 @@
                     <button id="google-sync-btn" class="btn-icon google-btn" title="Googleカレンダーと同期">
                         <i class="fab fa-google"></i>
                     </button>
+                    
+                    <div class="account-control">
+                        <button id="account-icon" class="btn-icon" title="アカウント設定">
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                        <div id="account-menu" class="dropdown-menu hidden">
+                            <button id="show-change-password-btn">パスワード変更</button>
+                            <button id="show-delete-account-btn" class="danger">アカウント削除</button>
+                        </div>
+                    </div>
+
+                    <button id="contact-btn" class="btn-icon" title="お問い合わせ">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
                     <button id="logout-btn" class="btn-icon" title="ログアウト">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </div>
             </header>
-            
+
             <div id="study-choice-modal" class="modal-overlay hidden">
                 <div class="modal-content">
                     <span class="close-btn">&times;</span>
                     <h2>記録方法を選択</h2>
                     <div class="choice-buttons">
                         <button id="show-timer-btn">⏱️ タイマーで記録</button>
-                        <button id="show-manual-btn">✍️ 手動で入力</button>
+                        <button id="show-manual-btn">✍️ 復習をセットする</button>
                     </div>
                 </div>
             </div>
@@ -108,8 +125,18 @@
                     <span class="close-btn">&times;</span>
                     <h2>タイマーで記録</h2>
                     <form id="timer-log-form">
-                        <input type="text" id="timer-subject" placeholder="科目" required>
-                        <input type="text" id="timer-content" placeholder="勉強内容" required>
+                        <div class="input-with-history">
+                            <input type="text" id="timer-subject" placeholder="科目" required>
+                            <button type="button" class="history-toggle-btn" data-target="timer-subject-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="timer-subject-history" class="history-dropdown hidden"></ul>
+                        </div>
+                        <div class="input-with-history">
+                            <input type="text" id="timer-content" placeholder="勉強内容" required>
+                            <button type="button" class="history-toggle-btn" data-target="timer-content-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="timer-content-history" class="history-dropdown hidden"></ul>
+                        </div>
                         <div id="timer-display">00:00:00</div>
                         <button type="button" id="timer-toggle-btn">スタート</button>
                     </form>
@@ -119,17 +146,32 @@
             <div id="manual-log-modal" class="modal-overlay hidden">
                 <div class="modal-content">
                     <span class="close-btn">&times;</span>
-                    <h2>手動で入力</h2>
+                    <h2>初回勉強 ＆ 復習セット</h2>
                     <form id="manual-log-form">
-                        <input type="text" id="manual-subject" placeholder="科目" required>
-                        <input type="text" id="manual-content" placeholder="勉強内容" required>
+                        <div class="input-with-history">
+                            <input type="text" id="manual-subject" placeholder="科目" required>
+                            <button type="button" class="history-toggle-btn" data-target="manual-subject-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="manual-subject-history" class="history-dropdown hidden"></ul>
+                        </div>
+                        <div class="input-with-history">
+                            <input type="text" id="manual-content" placeholder="勉強内容" required>
+                            <button type="button" class="history-toggle-btn" data-target="manual-content-history"
+                                title="履歴を表示">▼</button>
+                            <ul id="manual-content-history" class="history-dropdown hidden"></ul>
+                        </div>
                         <label>勉強した日</label>
                         <input type="date" id="manual-date" required>
+
                         <label>開始時間</label>
                         <input type="time" id="manual-start-time" required>
-                        <label>勉強時間（分）</label>
-                        <input type="number" id="manual-duration" placeholder="例: 60" min="1" required>
-                        <button type="submit">この内容で登録</button>
+
+                        <label>終了時間</label>
+                        <input type="time" id="manual-end-time" required>
+
+                        <label>期限（オプション）</label>
+                        <input type="date" id="manual-deadline">
+                        <button type="submit">登録して復習をセット</button>
                     </form>
                 </div>
             </div>
@@ -179,6 +221,60 @@
             </main>
         </div>
     </div>
-    
-</body>
+
+    <div id="change-password-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>パスワード変更</h2>
+            <form id="change-password-form">
+                <label>現在のパスワード</label>
+                <input type="password" id="old-password" required>
+                <label>新しいパスワード</label>
+                <input type="password" id="new-password" required>
+                <label>新しいパスワード（確認）</label>
+                <input type="password" id="confirm-password" required>
+                <button type="submit" class="btn btn-primary">変更する</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-account-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>アカウント削除</h2>
+            <p>本当にアカウントを削除しますか？<br>この操作は取り消せません。スケジュールデータもすべて削除されます。</p>
+            <div class="modal-buttons">
+                <button id="confirm-delete-btn" class="btn btn-danger">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="event-detail-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>予定の編集</h2>
+            <form id="event-detail-form">
+                <label>予定</label>
+                <input type="text" id="event-detail-text" required>
+
+                <label>日付</label>
+                <input type="date" id="event-detail-date" required>
+
+                <div class="time-inputs">
+                    <label>開始</label>
+                    <input type="time" id="event-detail-start-time" required>
+                    <span>-</span>
+                    <label>終了</label>
+                    <input type="time" id="event-detail-end-time" required>
+                </div>
+
+                <button type="submit" id="event-detail-save-btn" class="btn btn-primary btn-block">変更を保存</button>
+                <button type="button" id="event-detail-delete-btn" class="btn btn-danger btn-block"
+                    style="margin-top: 10px;">この予定を削除</button>
+            </form>
+        </div>
+    </div>
+
+    </body>
+
 </html>
