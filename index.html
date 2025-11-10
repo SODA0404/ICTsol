@@ -12,8 +12,9 @@
     
     <link rel="stylesheet" href="style.css">
     
-    <script src="https://apis.google.com/js/api.js" defer></script>
-    <script src="https://accounts.google.com/gsi/client" defer></script>
+<!-- Google API 関連スクリプト -->
+<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -84,6 +85,15 @@
                     <button id="google-sync-btn" class="btn-icon google-btn" title="Googleカレンダーと同期">
                         <i class="fab fa-google"></i>
                     </button>
+                    <div class="account-control">
+                        <button id="account-icon" class="btn-icon" title="アカウント設定">
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                        <div id="account-menu" class="dropdown-menu hidden">
+                            <button id="show-change-password-btn">パスワード変更</button>
+                            <button id="show-delete-account-btn" class="danger">アカウント削除</button>
+                        </div>
+                    </div>
                     <button id="logout-btn" class="btn-icon" title="ログアウト">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
@@ -182,6 +192,32 @@
                     </div>
                 </div>
             </main>
+        </div>
+    </div>
+    <div id="change-password-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>パスワード変更</h2>
+            <form id="change-password-form">
+                <label>現在のパスワード</label>
+                <input type="password" id="old-password" required>
+                <label>新しいパスワード</label>
+                <input type="password" id="new-password" required>
+                <label>新しいパスワード（確認）</label>
+                <input type="password" id="confirm-password" required>
+                <button type="submit" class="btn btn-primary">変更する</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-account-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>アカウント削除</h2>
+            <p>本当にアカウントを削除しますか？<br>この操作は取り消せません。スケジュールデータもすべて削除されます。</p>
+            <div class="modal-buttons">
+                <button id="confirm-delete-btn" class="btn btn-danger">削除する</button>
+            </div>
         </div>
     </div>
     

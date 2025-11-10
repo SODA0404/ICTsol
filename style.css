@@ -271,6 +271,60 @@ input:checked + .slider:before { transform: translateX(20px); }
     flex-direction: column;
     flex-grow: 1;
 }
+.calendar-week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 8px 8px 0 0; /* カレンダーの角丸に合わせる */
+}
+.calendar-week-day {
+    text-align: center;
+    padding: 8px 0;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* 曜日ヘッダーの色 */
+.calendar-week-day.saturday {
+    color: blue;
+}
+.calendar-week-day.sunday {
+    color: red;
+}
+body.dark-mode .calendar-week-day.saturday {
+    color: #8ab4f8; /* 明るい青 */
+}
+body.dark-mode .calendar-week-day.sunday {
+    color: #f28b82; /* 明るい赤 */
+}
+
+/* ★ 新規: 日付グリッドコンテナ */
+.calendar-grid {
+    display: grid;
+    flex-grow: 1;
+    grid-template-columns: repeat(7, 1fr);
+    /* ★ 追加: グリッドの外枠線 (左と上) */
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+}
+.week-view .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    /* ★ 追加: 1行で高さを全て使う */
+    grid-template-rows: 1fr;
+}
+.month-view .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    /* ★ 追加: 6行で高さを均等に分割 */
+    grid-template-rows: repeat(6, 1fr);
+}
+.day-view .calendar-grid {
+    display: block; /* 日表示は従来通り */
+    /* ★ 追加: 日表示ではグリッド線は不要 */
+    border-left: none;
+    border-top: none;
+}
 .calendar-controls {
     display: flex;
     justify-content: space-between;
@@ -306,6 +360,10 @@ input:checked + .slider:before { transform: translateX(20px); }
     border-radius: 8px;
     overflow: hidden;
     flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    border-top: none; 
+    border-radius: 0 0 8px 8px;
 }
 .calendar-day {
     border-right: 1px solid var(--border-color);
@@ -313,6 +371,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     background-color: var(--surface-color);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 .calendar-day-header {
     padding: 8px;
@@ -326,7 +385,6 @@ input:checked + .slider:before { transform: translateX(20px); }
     overflow-y: auto;
     font-size: 0.85em;
     padding: 5px;
-    min-height: 100px;
 }
 .calendar-schedule-item {
     background-color: var(--primary-color);
@@ -348,8 +406,6 @@ body.dark-mode .today .calendar-day-header {
     background-color: #3a321f;
     color: #f7d66a;
 }
-#calendar-view.week-view { display: grid; grid-template-columns: repeat(7, 1fr); }
-#calendar-view.month-view { display: grid; grid-template-columns: repeat(7, 1fr); }
 #calendar-view.day-view { display: block; }
 .month-view .other-month { background-color: var(--secondary-color); }
 body.dark-mode .month-view .other-month { background-color: #242426; }
@@ -566,6 +622,33 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
 }
 
 /* =========================================================
+   Account Icon & Menu
+   ========================================================= */
+.account-control { position: relative; }
+#account-icon i { font-size: 1.8em; }
+.dropdown-menu {
+    position: absolute; top: 100%; right: 0; background-color: var(--surface-color); border-radius: 8px;
+    box-shadow: var(--shadow); border: 1px solid var(--border-color); padding: 10px 0; min-width: 160px; z-index: 100;
+}
+.dropdown-menu button { display: block; width: 100%; padding: 10px 15px; background: none; border: none; text-align: left; color: var(--text-primary); font-size: 0.95em; }
+.dropdown-menu button:hover { background-color: var(--secondary-color); }
+.dropdown-menu button.danger { color: var(--accent-color); }
+body.dark-mode .dropdown-menu button:hover { background-color: #3a3a3c; }
+
+/* =========================================================
+   Password Change & Delete Modals
+   ========================================================= */
+#change-password-form { display: flex; flex-direction: column; gap: 15px; }
+#change-password-form label { font-size: 0.9em; font-weight: 500; color: var(--text-secondary); margin-bottom: -10px; }
+#change-password-form input[type="password"] { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; background-color: var(--secondary-color); color: var(--text-primary); }
+#change-password-form button { margin-top: 10px; } /* 継承 */
+
+#delete-account-modal p { margin-bottom: 20px; color: var(--text-secondary); line-height: 1.8; }
+.modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.btn-danger { background-color: var(--accent-color); color: white; }
+.btn-danger:hover { background-color: #c0392b; }
+
+/* =========================================================
    Google Button (from inline style)
    ========================================================= */
 .google-btn {
@@ -583,4 +666,23 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
 }
 .google-btn:active {
     transform: scale(0.97);
+}
+/* =========================================================
+   曜日・祝日 色分け
+   ========================================================= */
+
+/* ライトモード */
+.calendar-day-header span.saturday {
+    color: blue;
+}
+.calendar-day-header span.sunday {
+    color: red;
+}
+
+/* ダークモード */
+body.dark-mode .calendar-day-header span.saturday {
+    color: #8ab4f8; /* 明るい青 */
+}
+body.dark-mode .calendar-day-header span.sunday {
+    color: #f28b82; /* 明るい赤 */
 }

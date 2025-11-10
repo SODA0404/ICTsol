@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const forms = {
         register: document.getElementById('register-form'),
         login: document.getElementById('login-form'),
-        schedule: document.getElementById('schedule-form')
+        schedule: document.getElementById('schedule-form'),
+        changePassword: document.getElementById('change-password-form') 
     };
     const buttons = {
         showLogin: document.getElementById('show-login-btn'),
@@ -33,7 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
         weekView: document.getElementById('week-view-btn'),
         monthView: document.getElementById('month-view-btn'),
         googleSync: document.getElementById('google-sync-btn'),
-        themeToggle: document.getElementById('theme-toggle-checkbox')
+        themeToggle: document.getElementById('theme-toggle-checkbox'),
+        accountIcon: document.getElementById('account-icon'),
+        showChangePassword: document.getElementById('show-change-password-btn'),
+        showDeleteAccount: document.getElementById('show-delete-account-btn'),
+        confirmDelete: document.getElementById('confirm-delete-btn')
     };
     const scheduleElements = {
         list: document.getElementById('schedule-list'),
@@ -42,11 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarTitle: document.getElementById('calendar-title')
     };
 
+    const accountMenu = document.getElementById('account-menu');
+    const changePasswordModal = document.getElementById('change-password-modal');
+    const deleteAccountModal = document.getElementById('delete-account-modal');
+    const modalCloseButtons = document.querySelectorAll('.modal-overlay .close-btn'); // 全モーダルの閉じるボタンを共通化
+
     // --- 状態管理 (変更なし) ---
     let currentUser = null;
     let currentView = 'week';
     let currentDate = new Date();
     let tokenClient, gapiInited = false, gisInited = false, accessToken = null;
+    let holidays = new Set();
 
     // ===== ▼▼▼ 勉強記録機能 ▼▼▼ =====
     const addStudyLogBtn = document.getElementById('add-study-log-btn');
@@ -134,13 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const durationMs = initialEnd.getTime() - initialStart.getTime();
-        
+
         // --- データ処理開始 ---
         const usersData = await getUsersData();
-        
+
         // 1. 初回の勉強を登録
         addScheduleToData(usersData, `【${subject}】${content} (初回)`, initialStart, initialEnd);
-        
+
         const proposalIntervals = [1, 3, 7, 30]; // 1日後, 3日後, 1週間後, 1ヶ月後
         const scheduledDates = [];
         const formatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
@@ -153,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 期限チェック (復習開始希望時刻が期限を過ぎていたらスキップ)
             if (deadline && preferredStart > deadline) {
-                continue; 
+                continue;
             }
 
             // ★ 空き時間スロットを検索 (現在の全スケジュールリストを渡す)
@@ -162,10 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (foundSlotStart) {
                 const foundSlotEnd = new Date(foundSlotStart.getTime() + durationMs);
                 const title = `【${subject}】${content} (復習 ${day}日目)`;
-                
+
                 // データをメモリ上（usersData）に追加
-                addScheduleToData(usersData, title, foundSlotStart, foundSlotEnd); 
-                
+                addScheduleToData(usersData, title, foundSlotStart, foundSlotEnd);
+
                 // 通知用の日付をフォーマット
                 scheduledDates.push(foundSlotStart.toLocaleString('ja-JP', formatOptions));
             } else {
@@ -214,35 +225,35 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         usersData[currentUser].schedules.push(newSchedule);
     }
-    
+
     // 空きスロット検索ヘルパー関数 (復習セット用)
     function findFreeSlot(preferredStart, durationMs, existingSchedules) {
         let proposalStart = new Date(preferredStart.getTime());
         let proposalEnd = new Date(proposalStart.getTime() + durationMs);
         const targetDateStr = proposalStart.toISOString().split('T')[0];
         let conflictFound = true;
-        let attempts = 0; 
+        let attempts = 0;
 
-        while (conflictFound && attempts < 100) { 
+        while (conflictFound && attempts < 100) {
             conflictFound = false;
             attempts++;
 
             for (const event of existingSchedules) {
-                if (event.date !== targetDateStr) continue; 
+                if (event.date !== targetDateStr) continue;
 
-                const eventStartStr = event.startTime || event.time; 
-                if (!eventStartStr) continue; 
+                const eventStartStr = event.startTime || event.time;
+                if (!eventStartStr) continue;
 
                 const existingStart = new Date(`${event.date}T${eventStartStr}`);
                 let existingEnd;
-                
+
                 if (event.endTime) {
                     existingEnd = new Date(`${event.date}T${event.endTime}`);
                 } else {
                     existingEnd = new Date(existingStart.getTime() + 60 * 60 * 1000); // 1h
                 }
 
-                if (isNaN(existingStart.getTime()) || isNaN(existingEnd.getTime())) continue; 
+                if (isNaN(existingStart.getTime()) || isNaN(existingEnd.getTime())) continue;
 
                 const isOverlapping = (proposalStart < existingEnd) && (proposalEnd > existingStart);
 
@@ -254,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (proposalStart.toISOString().split('T')[0] !== targetDateStr) {
                         return null; // 日付が変わったらNG
                     }
-                    break; 
+                    break;
                 }
             }
         }
@@ -272,13 +283,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Google API 関連 ---
     // (グローバル関数を定義)
-    window.gapiLoaded = function() {
-        gapi.load('client', async () => { 
-            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] }); 
-            gapiInited = true; 
-        }); 
+    window.gapiLoaded = function () {
+        gapi.load('client', async () => {
+            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+            gapiInited = true;
+        });
     }
-    window.gisLoaded = function() {
+    window.gisLoaded = function () {
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID, scope: SCOPES,
             callback: (resp) => {
@@ -289,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         gisInited = true;
     }
-    
+
     async function syncSchedulesToGoogle() {
         if (!currentUser) return alert('まずアプリにログインしてください');
         if (!accessToken) {
@@ -301,11 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
         const promises = schedules.map(s => {
-            const startDate = new Date(`${s.date}T${s.startTime || s.time}`); 
+            const startDate = new Date(`${s.date}T${s.startTime || s.time}`);
             let endDate;
-            
+
             if (s.endTime) {
-                endDate = new Date(`${s.date}T${s.endTime}`); 
+                endDate = new Date(`${s.date}T${s.endTime}`);
             } else {
                 endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1h
             }
@@ -317,7 +328,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Tokyo' },
                 end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Tokyo' },
             };
-            return gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event }).catch(err => console.error('追加失敗:', err));
+            return gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: event
+            }).then(
+                (response) => console.log('追加成功:', response),
+                (error) => console.error('追加失敗:', error)
+            );
         });
         await Promise.all(promises);
         alert('Googleカレンダーへの同期が完了しました！');
@@ -349,17 +366,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUser) return;
         const usersData = await getUsersData();
         const schedules = usersData[currentUser]?.schedules || [];
-        
+
         ['dayView', 'weekView', 'monthView'].forEach(v => buttons[v]?.classList.remove('active'));
         buttons[`${currentView}View`]?.classList.add('active');
+
+        if (currentView === 'day') {
+            buttons.today.textContent = '今日';
+        } else if (currentView === 'week') {
+            buttons.today.textContent = '今週';
+        } else {
+            buttons.today.textContent = '今月';
+        }
 
         if (currentView === 'day') renderDayView(schedules);
         else if (currentView === 'week') renderWeekView(schedules);
         else renderMonthView(schedules);
-        
+
         renderScheduleList(schedules);
     }
-    
+
     function renderDayView(schedules) {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
         scheduleElements.calendarView.innerHTML = '';
@@ -367,47 +392,91 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayElem = createDayElement(currentDate);
         schedules
             .filter(s => s.date === currentDate.toISOString().split('T')[0])
-            .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+            .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
             .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
         scheduleElements.calendarView.appendChild(dayElem.element);
     }
     function renderWeekView(schedules) {
         const start = new Date(currentDate);
-        start.setDate(start.getDate() - (start.getDay() === 0 ? 6 : start.getDay() - 1));
+        start.setDate(start.getDate() - start.getDay()); // ★ 日曜始まりに変更
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
-        scheduleElements.calendarTitle.textContent = `${formatDate(start, {month:'long', day:'numeric'})} - ${formatDate(end, {month:'long', day:'numeric'})}`;
-        scheduleElements.calendarView.innerHTML = '';
-        scheduleElements.calendarView.className = 'week-view';
+        scheduleElements.calendarTitle.textContent = `${formatDate(start, { month: 'long', day: 'numeric' })} - ${formatDate(end, { month: 'long', day: 'numeric' })}`;
+        
+        scheduleElements.calendarView.className = 'week-view'; // クラス名は先に設定
+
+        // ★ 修正: 曜日のヘッダー行を生成
+        let headerHtml = '<div class="calendar-week-header">';
+        let tempDay = new Date(start);
+        for (let i = 0; i < 7; i++) {
+            const dayClass = getDayClassName(tempDay);
+            headerHtml += `<div class="calendar-week-day ${dayClass}">${formatDate(tempDay, { weekday: 'short' })}</div>`;
+            tempDay.setDate(tempDay.getDate() + 1);
+        }
+        headerHtml += '</div>';
+
+        // ★ 修正: 日付グリッドを生成
+        let gridHtml = '<div class="calendar-grid">'; // 日付用のグリッドコンテナ
         for (let i = 0; i < 7; i++) {
             const day = new Date(start);
             day.setDate(start.getDate() + i);
-            const dayElem = createDayElement(day);
+            const dayElem = createDayElement(day); // createDayElement は日付のみを返すよう後で修正
+
+            // スケジュールを構築
+            const body = document.createElement('div');
             schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
-                .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
-            scheduleElements.calendarView.appendChild(dayElem.element);
+                .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+                .forEach(s => body.appendChild(createScheduleItem(s)));
+            
+            dayElem.element.querySelector('.calendar-day-body').innerHTML = body.innerHTML;
+            gridHtml += dayElem.element.outerHTML;
         }
+        gridHtml += '</div>';
+
+        scheduleElements.calendarView.innerHTML = headerHtml + gridHtml;
     }
     function renderMonthView(schedules) {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long' });
-        scheduleElements.calendarView.innerHTML = '';
-        scheduleElements.calendarView.className = 'month-view';
+        
+        scheduleElements.calendarView.className = 'month-view'; // クラス名は先に設定
+
         const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const startDay = new Date(firstDay);
-        startDay.setDate(startDay.getDate() - (startDay.getDay() === 0 ? 6 : startDay.getDay() - 1));
+        startDay.setDate(startDay.getDate() - startDay.getDay()); // ★ 日曜始まりに変更
+
+        // ★ 修正: 曜日のヘッダー行を生成
+        let headerHtml = '<div class="calendar-week-header">';
+        let tempDay = new Date(startDay);
+        for (let i = 0; i < 7; i++) {
+            const dayClass = getDayClassName(tempDay);
+            headerHtml += `<div class="calendar-week-day ${dayClass}">${formatDate(tempDay, { weekday: 'short' })}</div>`;
+            tempDay.setDate(tempDay.getDate() + 1);
+        }
+        headerHtml += '</div>';
+
+        // ★ 修正: 日付グリッドを生成
+        let gridHtml = '<div class="calendar-grid">'; // 日付用のグリッドコンテナ
         for (let i = 0; i < 42; i++) {
             const day = new Date(startDay);
             day.setDate(startDay.getDate() + i);
-            const dayElem = createDayElement(day);
+            const dayElem = createDayElement(day); // createDayElement は日付のみを返すよう後で修正
+
             if (day.getMonth() !== currentDate.getMonth()) dayElem.element.classList.add('other-month');
+
+            // スケジュールを構築
+            const body = document.createElement('div');
             schedules
                 .filter(s => s.date === day.toISOString().split('T')[0])
-                .sort((a,b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
-                .forEach(s => dayElem.body.appendChild(createScheduleItem(s)));
-            scheduleElements.calendarView.appendChild(dayElem.element);
+                .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
+                .forEach(s => body.appendChild(createScheduleItem(s)));
+            
+            dayElem.element.querySelector('.calendar-day-body').innerHTML = body.innerHTML;
+            gridHtml += dayElem.element.outerHTML;
         }
+        gridHtml += '</div>';
+
+        scheduleElements.calendarView.innerHTML = headerHtml + gridHtml;
     }
 
     function renderScheduleList(schedules) {
@@ -425,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleEndTime = new Date(`${s.date}T${s.startTime}`);
                 scheduleEndTime.setHours(scheduleEndTime.getHours() + 1);
             } else {
-                return false; 
+                return false;
             }
             return scheduleEndTime > now; // 終了時刻が未来のものだけ
         });
@@ -439,33 +508,93 @@ document.addEventListener('DOMContentLoaded', () => {
             .forEach(s => {
                 const li = document.createElement('li');
                 const startTime = s.startTime || s.time;
-                const endTime = s.endTime || '( 1h )'; 
+                const endTime = s.endTime || '( 1h )';
 
                 li.innerHTML = `
                     <span class="schedule-item-content">
-                        <strong>${s.date} (${formatDate(new Date(s.date), {weekday:'short'})})</strong>
+                        <strong>${s.date} (${formatDate(new Date(s.date), { weekday: 'short' })})</strong>
                         <span>${startTime} - ${endTime}</span>
                         ${s.text}
                     </span>
                     <button class="delete-btn" title="削除"><i class="fas fa-trash-alt"></i></button>`;
-                
+
                 li.dataset.date = s.date;
                 li.dataset.text = s.text;
-                if(s.startTime) li.dataset.startTime = s.startTime;
-                if(s.endTime) li.dataset.endTime = s.endTime;
-                if(s.time) li.dataset.time = s.time; 
+                if (s.startTime) li.dataset.startTime = s.startTime;
+                if (s.endTime) li.dataset.endTime = s.endTime;
+                if (s.time) li.dataset.time = s.time;
 
                 scheduleElements.list.appendChild(li);
             });
+    }
+
+    const getDayClassName = (day) => {
+        const dateStr = day.toISOString().split('T')[0];
+        const dayIndex = day.getDay();
+        if (holidays.has(dateStr) || dayIndex === 0) return 'sunday'; // 日曜・祝日
+        if (dayIndex === 6) return 'saturday'; // 土曜
+        return '';
+    };
+
+    // 祝日読み込み関数
+    async function loadHolidays() {
+        try {
+            // 内閣府の祝日CSVデータ(Shift_JIS)を利用
+            const response = await fetch('https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv');
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const sjisText = await response.arrayBuffer();
+            // Shift_JISからUTF-8にデコード
+            const decoder = new TextDecoder('shift_jis');
+            const csvText = decoder.decode(sjisText);
+            
+            const lines = csvText.split('\n');
+            const holidaySet = new Set();
+            // 1行目(ヘッダー)をスキップ
+            for (let i = 1; i < lines.length; i++) {
+                const columns = lines[i].split(',');
+                if (columns[0]) {
+                    // YYYY/M/D を YYYY-MM-DD 形式に正規化
+                    const parts = columns[0].split('/');
+                    if (parts.length === 3) {
+                        const dateStr = `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
+                        holidaySet.add(dateStr);
+                    }
+                }
+            }
+            holidays = holidaySet;
+            console.log('日本の祝日を読み込みました。', holidays.size, '件');
+        } catch (error) {
+            console.error('祝日の読み込みに失敗しました:', error);
+            // 失敗しても動作を続行
+        }
     }
 
     function createDayElement(date) {
         const element = document.createElement('div');
         element.className = 'calendar-day';
         if (date.toDateString() === new Date().toDateString()) element.classList.add('today');
-        const headerStyle = currentView === 'month' ? 'style="text-align: left; padding: 5px; border-bottom: none;"' : '';
-        const dayNumber = (currentView === 'month' && date.getDate() === 1) ? `${date.getMonth()+1}/${date.getDate()}` : date.getDate();
-        element.innerHTML = `<div class="calendar-day-header" ${headerStyle}>${dayNumber}</div><div class="calendar-day-body"></div>`;
+
+        // ★ 修正: 曜日クラスは日付の「数字」に適用
+        const dayClass = getDayClassName(date);
+        
+        let headerStyle = '';
+        let dayNumber;
+
+        if (currentView === 'month') {
+            headerStyle = 'style="text-align: left; padding: 5px; border-bottom: none;"';
+            dayNumber = (date.getDate() === 1 && !element.classList.contains('other-month')) 
+                              ? `${date.getMonth() + 1}/${date.getDate()}` 
+                              : date.getDate();
+        } else { // week or day
+            dayNumber = date.getDate();
+        }
+        
+        // ★ 修正: headerに曜日は含めず、日付の数字(span)に色クラスを適用
+        element.innerHTML = `<div class="calendar-day-header" ${headerStyle}>
+                                <span class="${dayClass}">${dayNumber}</span>
+                             </div>
+                             <div class="calendar-day-body"></div>`;
         return { element, body: element.querySelector('.calendar-day-body') };
     }
     function createScheduleItem(schedule) {
@@ -502,11 +631,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (usersData[username]?.password === password) await loginUser(username, password);
             else alert('ユーザー名またはパスワードが間違っています。');
         });
-        buttons.logout.addEventListener('click', () => { 
-            currentUser = null; 
+        buttons.logout.addEventListener('click', () => {
+            currentUser = null;
             accessToken = null;
-            sessionStorage.removeItem('user'); 
-            showScreen('welcome-container'); 
+            sessionStorage.removeItem('user');
+            showScreen('welcome-container');
         });
 
         // サイドバー予定追加フォーム
@@ -517,12 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const endTimeStr = document.getElementById('schedule-end-time').value;
             const text = document.getElementById('schedule-text').value.trim();
 
-            if(!date || !startTimeStr || !endTimeStr || !text) return alert('全て入力してください。');
+            if (!date || !startTimeStr || !endTimeStr || !text) return alert('全て入力してください。');
             if (endTimeStr <= startTimeStr) return alert('終了時刻は開始時刻より後に設定してください。');
-            
+
             const start = new Date(`${date}T${startTimeStr}`);
             const end = new Date(`${date}T${endTimeStr}`);
-            
+
             await addScheduleToCalendar(text, start, end); // 共通関数を使用
             e.target.reset();
         });
@@ -532,34 +661,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteButton = e.target.closest('.delete-btn');
             if (deleteButton) {
                 const li = deleteButton.parentElement;
-                const { date, text, startTime, endTime, time } = li.dataset; 
+                const { date, text, startTime, endTime, time } = li.dataset;
 
                 const usersData = await getUsersData();
                 const schedules = usersData[currentUser]?.schedules || [];
-                
+
                 let index = -1;
                 if (startTime && endTime) {
                     // 新しいデータ
-                    index = schedules.findIndex(s => 
-                        s.date === date && 
-                        s.startTime === startTime && 
-                        s.endTime === endTime && 
+                    index = schedules.findIndex(s =>
+                        s.date === date &&
+                        s.startTime === startTime &&
+                        s.endTime === endTime &&
                         s.text === text
                     );
                 } else if (time) {
                     // 古いデータ
-                    index = schedules.findIndex(s => 
-                        s.date === date && 
-                        s.time === time && 
+                    index = schedules.findIndex(s =>
+                        s.date === date &&
+                        s.time === time &&
                         s.text === text &&
-                        !s.startTime 
+                        !s.startTime
                     );
                 }
 
-                if (index > -1) { 
-                    schedules.splice(index, 1); 
-                    await saveUsersData(usersData); 
-                    await updateView(); 
+                if (index > -1) {
+                    schedules.splice(index, 1);
+                    await saveUsersData(usersData);
+                    await updateView();
                 } else {
                     console.error("削除対象のデータが見つかりません:", li.dataset);
                 }
@@ -583,14 +712,91 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.dayView.addEventListener('click', () => { currentView = 'day'; updateView(); });
         buttons.weekView.addEventListener('click', () => { currentView = 'week'; updateView(); });
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
-        
-        buttons.googleSync.addEventListener('click', () => { 
+
+        buttons.googleSync.addEventListener('click', () => {
             syncSchedulesToGoogle();
         });
 
         buttons.themeToggle.addEventListener('change', () => {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+        buttons.accountIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            accountMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            // アイコン自体とメニュー内部のクリックは無視
+            if (!accountMenu.classList.contains('hidden') && !accountMenu.contains(e.target) && !buttons.accountIcon.contains(e.target) ) {
+                accountMenu.classList.add('hidden');
+            }
+        });
+        buttons.showChangePassword.addEventListener('click', () => {
+            changePasswordModal.classList.remove('hidden');
+            accountMenu.classList.add('hidden');
+        });
+        buttons.showDeleteAccount.addEventListener('click', () => {
+            deleteAccountModal.classList.remove('hidden');
+            accountMenu.classList.add('hidden');
+        });
+        
+        // 全モーダルの閉じるボタンリスナーを共通化
+        modalCloseButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // すべてのモーダルを閉じる
+                studyChoiceModal.classList.add('hidden');
+                timerLogModal.classList.add('hidden');
+                manualLogModal.classList.add('hidden');
+                changePasswordModal.classList.add('hidden');
+                deleteAccountModal.classList.add('hidden');
+                // パスワード変更フォームもリセット
+                forms.changePassword.reset();
+            });
+        });
+
+        forms.changePassword.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldPassword = document.getElementById('old-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (newPassword !== confirmPassword) return alert('新しいパスワードが一致しません。');
+            if (!newPassword || newPassword.length < 4) return alert('新しいパスワードは4文字以上にしてください。');
+
+            const usersData = await getUsersData();
+            const storedUserData = JSON.parse(sessionStorage.getItem('user'));
+
+            // JSONBinのパスワードとsessionStorageのパスワードの両方をチェック
+            if (!storedUserData || usersData[currentUser]?.password !== oldPassword || storedUserData.password !== oldPassword) {
+                 return alert('現在のパスワードが間違っています。');
+            }
+
+            usersData[currentUser].password = newPassword;
+            await saveUsersData(usersData);
+
+            storedUserData.password = newPassword;
+            sessionStorage.setItem('user', JSON.stringify(storedUserData));
+
+            alert('パスワードを変更しました。');
+            forms.changePassword.reset();
+            changePasswordModal.classList.add('hidden');
+        });
+        buttons.confirmDelete.addEventListener('click', async () => {
+            const usersData = await getUsersData();
+            if (usersData[currentUser]) {
+                delete usersData[currentUser];
+                await saveUsersData(usersData);
+                currentUser = null;
+                accessToken = null;
+                sessionStorage.removeItem('user');
+                alert('アカウントを削除しました。');
+                deleteAccountModal.classList.add('hidden');
+                accountMenu.classList.add('hidden');
+                showScreen('welcome-container');
+            } else {
+                alert('エラーが発生しました。再度お試しください。');
+                deleteAccountModal.classList.add('hidden');
+            }
         });
     }
 
@@ -609,20 +815,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ★★★ 初期化処理 (Google APIロード安定化) ★★★ ---
     async function initializeApp() {
         // 先にリスナーを登録 (重要)
-        setupEventListeners(); 
-        
+        setupEventListeners();
+
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
             buttons.themeToggle.checked = true;
         }
+        
+        // ★ 修正: 祝日を読み込む
+        await loadHolidays();
+
         const savedUser = JSON.parse(sessionStorage.getItem('user'));
         if (savedUser) {
             await loginUser(savedUser.username, savedUser.password);
         } else {
             showScreen('welcome-container');
         }
-        
+
         // Google APIのロードを待機
         await checkGoogleApiLoad();
     }
@@ -632,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let gapiReady = false;
         let gisReady = false;
         let attempts = 0;
-        
+
         while (attempts < 50) { // 最大5秒待つ (100ms * 50)
             // gapi.load が存在するか、google.accounts が存在するかで判断
             gapiReady = (typeof gapi !== 'undefined' && gapi.load);
@@ -640,12 +850,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (gapiReady && gisReady) {
                 // グローバルに定義された関数を実行
-                if(typeof window.gapiLoaded === 'function') window.gapiLoaded(); 
-                if(typeof window.gisLoaded === 'function') window.gisLoaded();
+                if (typeof window.gapiLoaded === 'function') window.gapiLoaded();
+                if (typeof window.gisLoaded === 'function') window.gisLoaded();
                 console.log("Google API loaded.");
                 return;
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
