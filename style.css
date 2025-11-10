@@ -1,9 +1,12 @@
 /* =========================================================
    Unified Final CSS
+   (Base: style1.css + Features from style.css)
    ========================================================= */
 
 /* --- CSS Reset & Base Variables --- */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -44,7 +47,9 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 /* =========================================================
    Global Theme Toggle
@@ -63,18 +68,50 @@ body {
     box-shadow: var(--shadow);
 }
 
-.theme-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-.theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.theme-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.theme-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
 .slider {
-    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #ccc; transition: .4s; border-radius: 24px;
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
 }
+
 .slider:before {
-    position: absolute; content: ""; height: 18px; width: 18px;
-    left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
 }
-input:checked + .slider { background-color: var(--primary-color); }
-input:checked + .slider:before { transform: translateX(20px); }
+
+input:checked+.slider {
+    background-color: var(--primary-color);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
 
 /* =========================================================
    Authentication Screens
@@ -86,6 +123,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     min-height: 100vh;
     padding: 20px;
 }
+
 .auth-card {
     width: 100%;
     max-width: 400px;
@@ -95,27 +133,33 @@ input:checked + .slider:before { transform: translateX(20px); }
     box-shadow: var(--shadow);
     text-align: center;
 }
+
 .auth-card h1 {
     font-size: 2em;
     margin-bottom: 10px;
 }
+
 .auth-card p {
     color: var(--text-secondary);
     margin-bottom: 30px;
 }
+
 .welcome-buttons {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
+
 .auth-form {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
+
 .input-group {
     position: relative;
 }
+
 .input-group i {
     position: absolute;
     left: 15px;
@@ -123,6 +167,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     transform: translateY(-50%);
     color: var(--text-secondary);
 }
+
 .input-group input {
     width: 100%;
     padding: 15px 15px 15px 45px;
@@ -132,7 +177,9 @@ input:checked + .slider:before { transform: translateX(20px); }
     color: var(--text-primary);
     font-size: 16px;
 }
-.btn, button {
+
+.btn,
+button {
     font-family: var(--font-family);
     font-size: 16px;
     padding: 15px;
@@ -141,32 +188,43 @@ input:checked + .slider:before { transform: translateX(20px); }
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 500;
+    text-align: center;
+    /* buttonタグのデフォルト対策 */
+    display: inline-block;
+    /* buttonタグのデフォルト対策 */
 }
+
 .btn-primary {
     background-color: var(--primary-color);
     color: white;
 }
+
 .btn-primary:hover {
     background-color: var(--primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
+
 .btn-secondary {
     background-color: var(--secondary-color);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
+
 .btn-secondary:hover {
     background-color: var(--border-color);
 }
+
 .btn-block {
     width: 100%;
 }
+
 .btn-link {
     background: none;
     color: var(--text-secondary);
     padding: 10px;
 }
+
 .btn-link:hover {
     color: var(--primary-color);
     text-decoration: underline;
@@ -182,28 +240,35 @@ input:checked + .slider:before { transform: translateX(20px); }
     display: flex;
     flex-direction: column;
 }
+
 .app-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     padding: 15px 30px;
     background-color: var(--surface-color);
     border-bottom: 1px solid var(--border-color);
     flex-wrap: wrap;
     gap: 10px;
-    /* ★★★ 修正点: 右側にトグルスイッチ分の余白を確保 ★★★ */
-    padding-right: 140px; 
-    position: relative; 
 }
+
 .app-header h2 {
     font-size: 1.5em;
     margin: 0;
+    white-space: nowrap;
 }
+
+.header-left {
+    flex-shrink: 0;
+}
+
 .header-right {
     display: flex;
     align-items: center;
     gap: 15px;
+    margin-left: auto;
+    /* 右寄せ */
 }
+
 .btn-icon {
     background: none;
     border: none;
@@ -211,16 +276,24 @@ input:checked + .slider:before { transform: translateX(20px); }
     color: var(--text-secondary);
     cursor: pointer;
     padding: 5px;
+    line-height: 1;
+    /* アイコン中央揃え */
 }
+
 .btn-icon:hover {
     color: var(--text-primary);
 }
+
 #add-study-log-btn {
     padding: 10px 15px;
     background-color: var(--primary-color);
     color: white;
     font-size: 0.9em;
+    border-radius: 6px;
+    /* 形状を他のボタンと合わせる */
+    white-space: nowrap;
 }
+
 #add-study-log-btn:hover {
     background-color: var(--primary-hover);
 }
@@ -234,11 +307,13 @@ input:checked + .slider:before { transform: translateX(20px); }
     padding: 20px;
     gap: 20px;
 }
+
 .calendar-wrapper {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
 }
+
 .sidebar {
     width: 320px;
     flex-shrink: 0;
@@ -246,18 +321,21 @@ input:checked + .slider:before { transform: translateX(20px); }
     flex-direction: column;
     gap: 20px;
 }
+
 .card {
     background-color: var(--surface-color);
     border-radius: 12px;
     padding: 20px;
     box-shadow: var(--shadow);
 }
+
 .card h3 {
     font-size: 1.2em;
     margin-bottom: 15px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
 }
+
 .card h3 i {
     margin-right: 8px;
     color: var(--primary-color);
@@ -271,6 +349,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     flex-direction: column;
     flex-grow: 1;
 }
+
 .calendar-controls {
     display: flex;
     justify-content: space-between;
@@ -280,120 +359,220 @@ input:checked + .slider:before { transform: translateX(20px); }
     margin-bottom: 15px;
     padding: 0 10px;
 }
+
 .calendar-controls h2 {
     font-size: 1.5em;
     margin: 0;
     text-align: left;
+    flex-grow: 1;
 }
-.calendar-nav, .view-switcher {
+
+.calendar-nav,
+.view-switcher {
     display: flex;
     gap: 5px;
+    flex-shrink: 0;
 }
-.calendar-nav button, .view-switcher button {
+
+.calendar-nav button,
+.view-switcher button {
     padding: 8px 12px;
     border: 1px solid var(--border-color);
     background-color: var(--surface-color);
+    color: var(--text-primary);
     border-radius: 6px;
     cursor: pointer;
 }
+
 .view-switcher button.active {
     background-color: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
 }
+
+/* ▼▼▼ Merged from style.css ▼▼▼ */
+.calendar-week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 8px 8px 0 0;
+    /* カレンダーの角丸に合わせる */
+}
+
+.calendar-week-day {
+    text-align: center;
+    padding: 8px 0;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* 曜日ヘッダーの色 */
+.calendar-week-day.saturday {
+    color: blue;
+}
+
+.calendar-week-day.sunday {
+    color: red;
+}
+
+body.dark-mode .calendar-week-day.saturday {
+    color: #8ab4f8;
+    /* 明るい青 */
+}
+
+body.dark-mode .calendar-week-day.sunday {
+    color: #f28b82;
+    /* 明るい赤 */
+}
+
+/* 日付グリッドコンテナ */
+.calendar-grid {
+    display: grid;
+    flex-grow: 1;
+    grid-template-columns: repeat(7, 1fr);
+    /* グリッドの外枠線 (左と上) */
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.week-view .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    /* 1行で高さを全て使う */
+    grid-template-rows: 1fr;
+}
+
+.month-view .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    /* 6行で高さを均等に分割 */
+    grid-template-rows: repeat(6, 1fr);
+}
+
+.day-view .calendar-grid {
+    display: block;
+    /* 日表示は従来通り */
+    /* 日表示ではグリッド線は不要 */
+    border-left: none;
+    border-top: none;
+}
+
+/* #calendar-view (Replaced with style.css version) */
 #calendar-view {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
     flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
 }
+
+/* .calendar-day (Replaced with style.css version) */
 .calendar-day {
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     background-color: var(--surface-color);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
+/* ▲▲▲ Merged from style.css ▲▲▲ */
+
+
 .calendar-day-header {
     padding: 8px;
     font-weight: 500;
-    text-align: center;
+    /* 祝日色分けのため、span を中に入れる前提 (style.css 互換) */
+    text-align: left; 
     background-color: var(--secondary-color);
     border-bottom: 1px solid var(--border-color);
 }
-.calendar-day-body {
-    flex-grow: 1;
-    overflow-y: auto;
-    font-size: 0.85em;
-    padding: 5px;
-    min-height: 100px;
+
+.calendar-day-header span {
+    font-weight: 500;
 }
-.calendar-schedule-item {
-    background-color: var(--primary-color);
-    color: white;
-    border-radius: 4px;
-    padding: 3px 6px;
-    margin-bottom: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.95em;
-    white-space: nowrap;
-}
+
 .today .calendar-day-header {
     background-color: #fffbef;
     color: #e6a23c;
     font-weight: bold;
 }
+
 body.dark-mode .today .calendar-day-header {
     background-color: #3a321f;
     color: #f7d66a;
 }
-#calendar-view.week-view { display: grid; grid-template-columns: repeat(7, 1fr); }
-#calendar-view.month-view { display: grid; grid-template-columns: repeat(7, 1fr); }
-#calendar-view.day-view { display: block; }
-.month-view .other-month { background-color: var(--secondary-color); }
-body.dark-mode .month-view .other-month { background-color: #242426; }
+
+/* day-view grid/column styles removed, handled by calendar-grid */
+
+.month-view .other-month {
+    background-color: var(--secondary-color);
+}
+
+body.dark-mode .month-view .other-month {
+    background-color: #242426;
+}
 
 /* =========================================================
    Modal & Popup Windows
    ========================================================= */
 .modal-overlay {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 100;
 }
+
 .modal-content {
     background: var(--surface-color);
     padding: 25px 30px;
     border-radius: 12px;
-    width: 90%; max-width: 500px;
+    width: 90%;
+    max-width: 500px;
     position: relative;
     box-shadow: var(--shadow);
 }
+
 .modal-content h2 {
     margin-bottom: 20px;
 }
+
 .close-btn {
     position: absolute;
-    top: 10px; right: 15px;
+    top: 10px;
+    right: 15px;
     font-size: 24px;
     cursor: pointer;
     font-weight: bold;
     color: var(--text-secondary);
+    background: none;
+    /* buttonタグ対策 */
+    border: none;
+    /* buttonタグ対策 */
+    padding: 5px;
+    /* buttonタグ対策 */
+    line-height: 1;
+    /* buttonタグ対策 */
 }
+
 .close-btn:hover {
     color: var(--text-primary);
 }
+
 .choice-buttons {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
+
 .choice-buttons button {
     padding: 20px;
     font-size: 1.1em;
@@ -410,15 +589,22 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     color: var(--primary-color);
     font-weight: 700;
 }
-#timer-log-form, #manual-log-form {
+
+#timer-log-form,
+#manual-log-form {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
-#timer-log-form input, 
+
+/* History Dropdownが .input-with-history でラップするため、
+   ここの input[type="text"] は .input-with-history > input[type="text"] で上書きされる */
+#timer-log-form input,
 #manual-log-form input[type="text"],
 #manual-log-form input[type="date"],
-#manual-log-form input[type="time"] {
+#manual-log-form input[type="time"],
+#manual-log-form input[type="number"] {
+    /* number も追加 */
     width: 100%;
     padding: 12px;
     border: 1px solid var(--border-color);
@@ -427,16 +613,22 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     background-color: var(--secondary-color);
     color: var(--text-primary);
 }
-#timer-log-form button, #manual-log-form button {
+
+#timer-log-form button,
+#manual-log-form button {
     padding: 15px;
     font-size: 16px;
+    margin-top: 10px;
 }
-#timer-toggle-btn.is-timing { 
-    background-color: var(--accent-color); 
+
+#timer-toggle-btn.is-timing {
+    background-color: var(--accent-color);
 }
-#timer-toggle-btn.is-timing:hover { 
-    background-color: #c0392b; 
+
+#timer-toggle-btn.is-timing:hover {
+    background-color: #c0392b;
 }
+
 #manual-log-form label {
     font-size: 0.9em;
     font-weight: 500;
@@ -452,12 +644,14 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     flex-direction: column;
     gap: 12px;
 }
+
 .schedule-form-wrapper label {
     font-size: 0.9em;
     font-weight: 500;
     color: var(--text-secondary);
     margin-bottom: -8px;
 }
+
 .schedule-form-wrapper input[type="date"],
 .schedule-form-wrapper input[type="time"],
 .schedule-form-wrapper input[type="text"] {
@@ -469,22 +663,28 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     color: var(--text-primary);
     font-size: 16px;
 }
+
 .time-inputs {
     display: flex;
     align-items: center;
     gap: 8px;
 }
+
 .time-inputs label {
     margin-bottom: 0;
     white-space: nowrap;
 }
+
 .time-inputs input[type="time"] {
     flex: 1;
+    min-width: 80px;
 }
+
 .time-inputs span {
     color: var(--text-secondary);
     font-weight: bold;
 }
+
 .schedule-form-wrapper button {
     margin-top: 10px;
 }
@@ -496,31 +696,43 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     list-style: none;
     max-height: 400px;
     overflow-y: auto;
+    padding-right: 5px;
+    /* スクロールバー用 */
 }
+
 #schedule-list li {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
+    padding: 12px 0;
     border-bottom: 1px solid var(--border-color);
     gap: 10px;
 }
+
 #schedule-list li:last-child {
     border-bottom: none;
 }
+
 .schedule-item-content {
     font-size: 0.95em;
     flex-grow: 1;
+    overflow: hidden;
 }
+
 .schedule-item-content strong {
     display: block;
     color: var(--text-primary);
     font-weight: 500;
 }
+
 .schedule-item-content span {
     color: var(--text-secondary);
     font-size: 0.9em;
+    display: block;
+    /* 時間を改行 */
+    margin-top: 2px;
 }
+
 .delete-btn {
     background: none;
     border: none;
@@ -528,7 +740,9 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     font-size: 1.1em;
     cursor: pointer;
     padding: 5px;
+    flex-shrink: 0;
 }
+
 .delete-btn:hover {
     color: var(--accent-color);
 }
@@ -540,33 +754,160 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     .app-main {
         flex-direction: column;
     }
+
     .sidebar {
         width: 100%;
         flex-direction: row;
         gap: 20px;
     }
-    .schedule-form-wrapper, .schedule-list-wrapper {
+
+    .schedule-form-wrapper,
+    .schedule-list-wrapper {
         flex: 1;
     }
 }
+
 @media (max-width: 768px) {
-    .app-header { 
-        flex-direction: column; 
+    .app-header {
+        flex-direction: column;
         align-items: stretch;
         padding: 15px;
-        /* ★ 修正: スマホ表示ではトグルと重ならないので余白不要 */
-        padding-right: 15px; 
     }
-    .header-left { text-align: center; }
-    .header-right { justify-content: center; }
-    .app-main { padding: 10px; }
-    .sidebar { flex-direction: column; }
-    .calendar-controls { flex-direction: column; gap: 10px; align-items: stretch; }
-    #calendar-view.week-view, #calendar-view.month-view { display: block; }
+
+    .header-left {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .header-right {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .app-main {
+        padding: 10px;
+    }
+
+    .sidebar {
+        flex-direction: column;
+    }
+
+    .calendar-controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    /* Merged: Responsive @768px from style.css */
+    .week-view .calendar-grid,
+    .month-view .calendar-grid {
+        display: block;
+    }
 }
 
 /* =========================================================
-   Google Button (from inline style)
+   Account Icon & Menu
+   ========================================================= */
+.account-control {
+    position: relative;
+}
+
+#account-icon i {
+    font-size: 1.8em;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    padding: 10px 0;
+    min-width: 160px;
+    z-index: 100;
+}
+
+.dropdown-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    text-align: left;
+    color: var(--text-primary);
+    font-size: 0.95em;
+}
+
+.dropdown-menu button:hover {
+    background-color: var(--secondary-color);
+}
+
+.dropdown-menu button.danger {
+    color: var(--accent-color);
+}
+
+body.dark-mode .dropdown-menu button:hover {
+    background-color: #3a3a3c;
+}
+
+/* =========================================================
+   Password Change & Delete Modals
+   ========================================================= */
+#change-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#change-password-form label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: -10px;
+}
+
+#change-password-form input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+}
+
+#change-password-form button {
+    margin-top: 10px;
+}
+
+/* 継承 */
+
+#delete-account-modal p {
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-danger {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* =========================================================
+   Google Button
    ========================================================= */
 .google-btn {
     background-color: #4285F4;
@@ -576,11 +917,323 @@ body.dark-mode .month-view .other-month { background-color: #242426; }
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s, transform 0.1s;
-    font-size: 1.2em; /* アイコンボタンとしてサイズ調整 */
+    font-size: 1.2em;
+    /* アイコンボタンとしてサイズ調整 */
+    line-height: 1;
+    /* アイコン中央揃え */
 }
+
 .google-btn:hover {
     background-color: #357ae8;
 }
+
 .google-btn:active {
     transform: scale(0.97);
+}
+
+/* =========================================================
+   Event Detail Modal Form
+   ========================================================= */
+#event-detail-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#event-detail-form label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: -10px;
+}
+
+#event-detail-form input[type="text"],
+#event-detail-form input[type="date"],
+#event-detail-form input[type="time"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: var(--secondary-color);
+    color: var(--text-primary);
+}
+
+#event-detail-form .time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#event-detail-form .time-inputs label {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+#event-detail-form .time-inputs input[type="time"] {
+    flex: 1;
+    min-width: 80px;
+}
+
+#event-detail-form .time-inputs span {
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+
+#event-detail-form button {
+    margin-top: 10px;
+}
+
+/* =========================================================
+   Calendar Item & Timeslot Styles
+   (From style1.css)
+   ========================================================= */
+
+/* ▼▼▼ 月・週ビューの時の .calendar-schedule-item (リスト形式) ▼▼▼ */
+.month-view .calendar-schedule-item,
+.week-view .calendar-schedule-item {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    padding: 3px 6px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.month-view .calendar-schedule-item:hover,
+.week-view .calendar-schedule-item:hover {
+    background-color: var(--primary-hover);
+    opacity: 0.9;
+}
+
+/* ▼▼▼ 日ビューの時の .calendar-schedule-item (タイムスロット形式) ▼▼▼ */
+.day-view .calendar-schedule-item {
+    position: absolute;
+    left: 15%;
+    /* タイムラインの幅 (8% + 5px) */
+    right: 5px;
+    width: auto;
+
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 4px;
+    padding: 5px 8px;
+    border-left: 3px solid var(--primary-hover);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    overflow: hidden;
+    font-size: 0.9em;
+
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    z-index: 10;
+    box-sizing: border-box;
+}
+
+.day-view .calendar-schedule-item:hover {
+    background-color: var(--primary-hover);
+    opacity: 0.9;
+}
+
+/* ▼▼▼ 日ビューの .calendar-day-body スタイル ▼▼▼ */
+.day-view .calendar-day-body {
+    position: relative;
+    height: 1440px;
+    /* 24h * 60px/h = 1440px */
+    overflow-y: scroll;
+    padding: 0;
+    min-height: 1440px;
+}
+
+/* ▼▼▼ タイムスロット（罫線と時間） ▼▼▼ */
+.time-slot {
+    position: relative;
+    height: 60px;
+    /* 1時間 = 60px */
+    border-bottom: 1px solid var(--border-color);
+    box-sizing: border-box;
+}
+
+.time-slot:last-child {
+    border-bottom: none;
+}
+
+/* 時間ラベル (0:00, 1:00...) */
+.time-slot-label {
+    position: absolute;
+    top: -0.7em;
+    left: 5px;
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    background-color: var(--surface-color);
+    padding: 0 4px;
+    z-index: 5;
+    width: 8%;
+}
+
+/* 0時のスロットだけはラベルを非表示（ヘッダーと重なるため） */
+.time-slot:first-child .time-slot-label {
+    display: none;
+}
+
+/* 月・週ビューの時はタイムスロットを非表示 */
+.month-view .time-slot,
+.week-view .time-slot {
+    display: none;
+}
+
+/* 月・週ビューの .calendar-day-body は高さを固定しない */
+.month-view .calendar-day-body,
+.week-view .calendar-day-body {
+    position: relative;
+    min-height: 100px;
+    height: auto;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+/* =========================================================
+   勉強記録の履歴リスト (ドロップダウン形式)
+   (From style1.css)
+   ========================================================= */
+
+/* ラッパー: input と button と ul を内包 */
+.input-with-history {
+    position: relative;
+    /* フォーム内の他の要素との間隔 */
+    /* gap: 15px; がフォームにあるので不要かも */
+    /* margin-bottom: 15px; */
+}
+
+/* 入力欄: ボタンが重なるため右側に余白を確保 */
+.input-with-history input[type="text"] {
+    /* !important で .schedule-form-wrapper などの詳細度が高いCSSに打ち勝つ */
+    padding-right: 40px !important;
+    width: 100%;
+}
+
+/* 履歴表示ボタン */
+.history-toggle-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 35px;
+    padding: 0;
+    margin: 0;
+
+    /* モーダル内の input スタイルに合わせる */
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
+
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    cursor: pointer;
+
+    /* 入力欄の右角丸に合わせる */
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-toggle-btn:hover {
+    background-color: var(--border-color);
+}
+
+body.dark-mode .history-toggle-btn {
+    background-color: #3a3a3c;
+    border-color: #444;
+}
+
+body.dark-mode .history-toggle-btn:hover {
+    background-color: #4a4a4c;
+}
+
+/* 履歴ドロップダウン本体 */
+.history-dropdown {
+    position: absolute;
+    top: 100%;
+    /* 入力欄の真下 */
+    left: 0;
+    width: 100%;
+
+    list-style: none;
+    max-height: 160px;
+    /* スクロール */
+    overflow-y: auto;
+
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    /* 上は入力欄と接する */
+    border-radius: 0 0 6px 6px;
+
+    z-index: 110;
+    /* モーダル(100)より上 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-dropdown li {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95em;
+    color: var(--text-primary);
+    /* テキストが長い場合に折り返す */
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+.history-dropdown li:last-child {
+    border-bottom: none;
+}
+
+.history-dropdown li:hover {
+    background-color: var(--secondary-color);
+}
+
+body.dark-mode .history-dropdown li:hover {
+    background-color: #3a3a3c;
+}
+
+/* 履歴がない場合の表示 */
+.history-dropdown li.no-history {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    cursor: default;
+    background-color: transparent !important;
+}
+
+/* =========================================================
+   曜日・祝日 色分け (from style.css)
+   ========================================================= */
+
+/* ライトモード (日付の数字) */
+.calendar-day-header span.saturday {
+    color: blue;
+}
+
+.calendar-day-header span.sunday {
+    color: red;
+}
+
+/* ダークモード (日付の数字) */
+body.dark-mode .calendar-day-header span.saturday {
+    color: #8ab4f8;
+    /* 明るい青 */
+}
+
+body.dark-mode .calendar-day-header span.sunday {
+    color: #f28b82;
+    /* 明るい赤 */
 }
