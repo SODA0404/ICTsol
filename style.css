@@ -1188,7 +1188,7 @@ body.dark-mode .history-toggle-btn:hover {
     border-bottom: 1px solid var(--border-color);
     font-size: 0.95em;
     color: var(--text-primary);
-    /* テキストが長い場合に折り返す */
+    /* テキストが長い場合に折り返す **/
     white-space: normal;
     word-wrap: break-word;
 }
