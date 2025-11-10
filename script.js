@@ -960,10 +960,10 @@ buttons.googleSync.addEventListener('click', async () => {
         return;
     }
 
-    // 1. Google → ローカル
+    // Google → ローカル
     await syncFromGoogleToLocal();
 
-    // 2. ローカル → Google
+    // ローカル → Google
     await syncSchedulesToGoogle();
 });
 
