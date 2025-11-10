@@ -93,6 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let tokenClient, gapiInited = false, gisInited = false, accessToken = null;
     // (祝日機能 - script.js)
     let holidays = new Set();
+    const getLocalDateString = (date) => {
+        if (!date) return null;
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
 
     // ===== ▼▼▼ 履歴機能 (script1) ▼▼▼ =====
     /**
@@ -340,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const formatTime = (date) => date.toTimeString().split(' ')[0].substring(0, 5);
         const newSchedule = {
-            date: start.toISOString().split('T')[0],
+            date: getLocalDateString(start),
             startTime: formatTime(start),
             endTime: formatTime(end),
             text: title,
@@ -354,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function findFreeSlot(preferredStart, durationMs, existingSchedules) {
         let proposalStart = new Date(preferredStart.getTime());
         let proposalEnd = new Date(proposalStart.getTime() + durationMs);
-        const targetDateStr = proposalStart.toISOString().split('T')[0];
+        const targetDateStr = getLocalDateString(proposalStart);
         let conflictFound = true;
         let attempts = 0;
         while (conflictFound && attempts < 100) {
@@ -472,6 +479,73 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Googleカレンダーへの同期が完了しました！');
     }
 
+    // Google カレンダーからローカルに同期する関数
+    async function syncFromGoogleToLocal() {
+        if (!currentUser) return alert('まずアプリにログインしてください');
+
+        // Googleカレンダーのイベントを取得
+        const googleEvents = await fetchGoogleEvents();
+
+        // JSONBinから現在のユーザーデータを取得
+        const usersData = await getUsersData();
+
+        if (!usersData[currentUser]) usersData[currentUser] = { password: '', schedules: [] };
+
+        for (const gEvent of googleEvents) {
+            // Googleイベントをローカル形式に変換
+            const localEvent = convertGoogleEventToLocal(gEvent);
+
+            // 既存のイベントと重複しないようにチェック
+            const exists = usersData[currentUser].schedules.some(s =>
+                s.date === localEvent.date &&
+                s.startTime === localEvent.startTime &&
+                s.text === localEvent.text
+            );
+
+            if (!exists) {
+                usersData[currentUser].schedules.push(localEvent);
+            }
+        }
+
+        // JSONBinに保存
+        await saveUsersData(usersData);
+
+        // カレンダー表示を更新
+        await updateView();
+
+        alert('Googleカレンダーのイベントをローカルに同期しました！');
+    }
+    // Googleイベントをローカル形式に変換する関数
+function convertGoogleEventToLocal(event) {
+    const start = new Date(event.start.dateTime || event.start.date);
+    const end = new Date(event.end.dateTime || event.end.date);
+
+    return {
+        date: start.toISOString().split('T')[0],          // YYYY-MM-DD
+        startTime: start.toTimeString().substring(0,5),   // HH:mm
+        endTime: end.toTimeString().substring(0,5),       // HH:mm
+        text: event.summary || ''
+    };
+}
+
+// Googleカレンダーからイベントを取得する関数
+async function fetchGoogleEvents() {
+    if (!accessToken) return alert('まずGoogleにログインしてください');
+
+    await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+    gapi.client.setToken({ access_token: accessToken });
+
+    const response = await gapi.client.calendar.events.list({
+        calendarId: 'primary',
+        timeMin: (new Date(0)).toISOString(),  // 過去すべてのイベント
+        timeMax: (new Date(2100,0,1)).toISOString(),  // 将来すべてのイベント
+        showDeleted: false,
+        singleEvents: true,
+        orderBy: 'startTime'
+    });
+
+    return response.result.items; // イベント配列を返す
+}
     // --- データ保存・読み込み (変更なし) ---
     async function getUsersData() {
         try {
@@ -527,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dayElem = createDayElement(currentDate);
         drawTimeSlots(dayElem.body); // (script1)
         schedules
-            .filter(s => s.date === currentDate.toISOString().split('T')[0])
+            .filter(s => s.date === getLocalDateString(currentDate))
             .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
             .forEach(s => dayElem.body.appendChild(createScheduleItem(s))); // (script1: createScheduleItemは絶対配置対応)
         scheduleElements.calendarView.appendChild(dayElem.element);
@@ -563,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // スケジュール描画ロジック (script1互換)
             const body = document.createElement('div');
             schedules
-                .filter(s => s.date === day.toISOString().split('T')[0])
+                .filter(s => s.date === getLocalDateString(day))
                 .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => body.appendChild(createScheduleItem(s))); // (script1: createScheduleItem呼び出し)
             
@@ -607,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // スケジュール描画ロジック (script1互換)
             const body = document.createElement('div');
             schedules
-                .filter(s => s.date === day.toISOString().split('T')[0])
+                .filter(s => s.date === getLocalDateString(day))
                 .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => body.appendChild(createScheduleItem(s))); // (script1: createScheduleItem呼び出し)
             
@@ -800,7 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const getDayClassName = (day) => {
-        const dateStr = day.toISOString().split('T')[0];
+        const dateStr = getLocalDateString(day);
         const dayIndex = day.getDay();
         if (holidays.has(dateStr) || dayIndex === 0) return 'sunday'; // 日曜・祝日
         if (dayIndex === 6) return 'saturday'; // 土曜
@@ -887,9 +961,18 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.weekView.addEventListener('click', () => { currentView = 'week'; updateView(); });
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
 
-        buttons.googleSync.addEventListener('click', () => {
-            syncSchedulesToGoogle();
-        });
+buttons.googleSync.addEventListener('click', async () => {
+    if (!accessToken) {
+        if (gisInited) tokenClient.requestAccessToken({ prompt: 'consent' });
+        return;
+    }
+
+    // Google → ローカル
+    await syncFromGoogleToLocal();
+
+    // ローカル → Google
+    await syncSchedulesToGoogle();
+});
 
         // ▼▼▼ お問い合わせ機能 (script1) ▼▼▼
         buttons.contact.addEventListener('click', () => {
