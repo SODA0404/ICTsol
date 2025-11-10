@@ -93,6 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let tokenClient, gapiInited = false, gisInited = false, accessToken = null;
     // (祝日機能 - script.js)
     let holidays = new Set();
+    const getLocalDateString = (date) => {
+        if (!date) return null;
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0'); // 月は0から始まるため+1
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
 
     // ===== ▼▼▼ 履歴機能 (script1) ▼▼▼ =====
     /**
@@ -332,29 +339,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // メモリ上のデータに追加するヘルパー関数 (script1: studySetId, isInitial対応)
-    function addScheduleToData(usersData, title, start, end, studySetId = null, isInitial = false) {
-        if (!usersData[currentUser]) {
-            const password = JSON.parse(sessionStorage.getItem('user'))?.password || '';
-            usersData[currentUser] = { password: password, schedules: [] };
-        }
-        const formatTime = (date) => date.toTimeString().split(' ')[0].substring(0, 5);
-        const newSchedule = {
-            date: start.toISOString().split('T')[0],
-            startTime: formatTime(start),
-            endTime: formatTime(end),
-            text: title,
-            studySetId: studySetId, // (script1)
-            isInitial: isInitial   // (script1)
-        };
-        usersData[currentUser].schedules.push(newSchedule);
+    // スケジュールをメモリ上のデータに追加するヘルパー関数 (修正版: Google Sync用IDに対応)
+function addScheduleToData(usersData, title, start, end, studySetId = null, isInitial = false, googleEventId = null) {
+    if (!usersData[currentUser]) {
+        const password = JSON.parse(sessionStorage.getItem('user'))?.password || '';
+        usersData[currentUser] = { password: password, schedules: [] };
     }
+    const formatTime = (date) => date.toTimeString().split(' ')[0].substring(0, 5);
+    const newSchedule = {
+        date: start.toISOString().split('T')[0],
+        startTime: formatTime(start),
+        endTime: formatTime(end),
+        text: title,
+        studySetId: studySetId, // (script1)
+        isInitial: isInitial,   // (script1)
+        googleEventId: googleEventId // 重要な変更: フィールドを追加 (通常は null で開始)
+    };
+    usersData[currentUser].schedules.push(newSchedule);
+}
 
     // 空きスロット検索ヘルパー関数 (script1 / script.js)
     function findFreeSlot(preferredStart, durationMs, existingSchedules) {
         let proposalStart = new Date(preferredStart.getTime());
         let proposalEnd = new Date(proposalStart.getTime() + durationMs);
-        const targetDateStr = proposalStart.toISOString().split('T')[0];
+        const targetDateStr = getLocalDateString(proposalStart);
         let conflictFound = true;
         let attempts = 0;
         while (conflictFound && attempts < 100) {
@@ -437,108 +445,163 @@ document.addEventListener('DOMContentLoaded', () => {
         gisInited = true;
     }
 
-    async function syncSchedulesToGoogle() {
-        if (!currentUser) return alert('まずアプリにログインしてください');
-        if (!accessToken) {
-            if (gisInited) tokenClient.requestAccessToken({ prompt: 'consent' });
-            return;
+    // Googleカレンダーにローカルのスケジュールを同期する関数 (修正版: API初期化と重複防止ロジックを実装)
+async function syncSchedulesToGoogle() {
+    if (!currentUser) return alert('まずアプリにログインしてください');
+    if (!accessToken) {
+        if (gisInited) tokenClient.requestAccessToken({ prompt: 'consent' });
+        return;
+    }
+    
+    // ★ 重要な修正: gapiクライアントの初期化とトークン設定を追加
+    //    これにより、APIコール実行前に認証済みであることを保証する
+    await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+    gapi.client.setToken({ access_token: accessToken });
+    
+    alert('Googleカレンダーとの同期を開始します...');
+    const usersData = await getUsersData();
+    
+    // スケジュールIDを更新するためにデータのディープコピーを作成
+    const schedules = usersData[currentUser]?.schedules || [];
+    const newSchedules = JSON.parse(JSON.stringify(schedules));
+
+    const promises = schedules.map((s, index) => {
+        const startDate = new Date(`${s.date}T${s.startTime || s.time}`);
+        let endDate;
+        if (s.endTime) {
+            endDate = new Date(`${s.date}T${s.endTime}`);
+        } else {
+            endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
         }
-        alert('Googleカレンダーとの同期を開始します...');
-        const usersData = await getUsersData();
-        const schedules = usersData[currentUser]?.schedules || [];
-        const promises = schedules.map(s => {
-            const startDate = new Date(`${s.date}T${s.startTime || s.time}`);
-            let endDate;
-            if (s.endTime) {
-                endDate = new Date(`${s.date}T${s.endTime}`);
-            } else {
-                endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-            }
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
-            const event = {
-                summary: s.text,
-                start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Tokyo' },
-                end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Tokyo' },
-            };
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null; // 無効な日付はnullを返す
+        
+        const event = {
+            summary: s.text,
+            start: { dateTime: startDate.toISOString(), timeZone: 'Asia/Tokyo' },
+            end: { dateTime: endDate.toISOString(), timeZone: 'Asia/Tokyo' },
+        };
+
+        // 重複防止ロジック: googleEventIdの有無で更新/新規追加を判定
+        if (s.googleEventId) {
+            // ID 存在: 既存のイベントを更新 (Update)
+            return gapi.client.calendar.events.update({
+                calendarId: 'primary',
+                eventId: s.googleEventId,
+                resource: event
+            }).then(
+                (response) => console.log('更新成功:', response),
+                (error) => console.error('更新失敗:', error)
+            );
+        } else {
+            // ID 不存在: 新規イベントを追加 (Insert)
             return gapi.client.calendar.events.insert({
                 calendarId: 'primary',
                 resource: event
             }).then(
-                (response) => console.log('追加成功:', response),
-                (error) => console.error('追加失敗:', error)
+                (response) => {
+                    console.log('新規追加成功:', response);
+                    // Googleから返されたIDをローカルデータのコピーに保存
+                    newSchedules[index].googleEventId = response.result.id;
+                },
+                (error) => console.error('新規追加失敗:', error)
             );
-        });
-        await Promise.all(promises);
-        alert('Googleカレンダーへの同期が完了しました！');
-    }
-
-    // Google カレンダーからローカルに同期する関数
-    async function syncFromGoogleToLocal() {
-        if (!currentUser) return alert('まずアプリにログインしてください');
-
-        // Googleカレンダーのイベントを取得
-        const googleEvents = await fetchGoogleEvents();
-
-        // JSONBinから現在のユーザーデータを取得
-        const usersData = await getUsersData();
-
-        if (!usersData[currentUser]) usersData[currentUser] = { password: '', schedules: [] };
-
-        for (const gEvent of googleEvents) {
-            // Googleイベントをローカル形式に変換
-            const localEvent = convertGoogleEventToLocal(gEvent);
-
-            // 既存のイベントと重複しないようにチェック
-            const exists = usersData[currentUser].schedules.some(s =>
-                s.date === localEvent.date &&
-                s.startTime === localEvent.startTime &&
-                s.text === localEvent.text
-            );
-
-            if (!exists) {
-                usersData[currentUser].schedules.push(localEvent);
-            }
         }
-
-        // JSONBinに保存
-        await saveUsersData(usersData);
-
-        // カレンダー表示を更新
-        await updateView();
-
-        alert('Googleカレンダーのイベントをローカルに同期しました！');
-    }
-    // Googleイベントをローカル形式に変換する関数
-function convertGoogleEventToLocal(event) {
-    const start = new Date(event.start.dateTime || event.start.date);
-    const end = new Date(event.end.dateTime || event.end.date);
-
-    return {
-        date: start.toISOString().split('T')[0],          // YYYY-MM-DD
-        startTime: start.toTimeString().substring(0,5),   // HH:mm
-        endTime: end.toTimeString().substring(0,5),       // HH:mm
-        text: event.summary || ''
-    };
-}
-
-// Googleカレンダーからイベントを取得する関数
-async function fetchGoogleEvents() {
-    if (!accessToken) return alert('まずGoogleにログインしてください');
-
-    await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
-    gapi.client.setToken({ access_token: accessToken });
-
-    const response = await gapi.client.calendar.events.list({
-        calendarId: 'primary',
-        timeMin: (new Date(0)).toISOString(),  // 過去すべてのイベント
-        timeMax: (new Date(2100,0,1)).toISOString(),  // 将来すべてのイベント
-        showDeleted: false,
-        singleEvents: true,
-        orderBy: 'startTime'
     });
 
-    return response.result.items; // イベント配列を返す
+    // null (無効な日付)の Promise を除外して待機
+    await Promise.all(promises.filter(p => p !== null));
+
+    // ID情報が更新されたローカルデータをJSONBinに保存
+    usersData[currentUser].schedules = newSchedules;
+    await saveUsersData(usersData);
+
+    alert('Googleカレンダーへの同期が完了しました！');
 }
+// Google カレンダーからローカルに同期する関数 (修正版: IDベースで更新/新規追加を判定)
+async function syncFromGoogleToLocal() {
+    if (!currentUser) return alert('まずアプリにログインしてください');
+
+    // Googleカレンダーのイベントを取得
+    const googleEvents = await fetchGoogleEvents();
+
+    // JSONBinから現在のユーザーデータを取得
+    const usersData = await getUsersData();
+
+    if (!usersData[currentUser]) usersData[currentUser] = { password: '', schedules: [] };
+
+    let localSchedules = usersData[currentUser].schedules;
+    let newOrUpdatedSchedules = [];
+
+    for (const gEvent of googleEvents) {
+        // Googleイベントをローカル形式に変換 (IDも含まれる)
+        const localEvent = convertGoogleEventToLocal(gEvent); 
+
+        // ★ 重要な変更: Google Event IDで既存のローカルイベントを検索
+        const existingIndex = localSchedules.findIndex(s => s.googleEventId === localEvent.googleEventId);
+
+        if (existingIndex !== -1) {
+            // ID 存在: 既存のイベントをGoogleの最新データで更新
+            const existingSchedule = localSchedules[existingIndex];
+            
+            // ローカル特有のフィールド (例: studySetId, isInitial) を保持しつつ、他のフィールドを更新
+            newOrUpdatedSchedules.push({
+                ...localEvent, // Google の最新データ
+                studySetId: existingSchedule.studySetId,
+                isInitial: existingSchedule.isInitial
+            });
+        } else {
+            // ID 不存在: 新規イベントとして追加
+            newOrUpdatedSchedules.push(localEvent);
+        }
+    }
+
+    // 1. Googleにまだ同期されていないローカル作成のイベント (googleEventIdを持たないもの) を抽出
+    //    これにより、Googleで作成されたイベントと、まだGoogleにプッシュされていないローカルイベントが保持される
+    const unSyncedLocalSchedules = localSchedules.filter(s => !s.googleEventId);
+
+    // 2. Googleから取得・更新したイベント + 未同期のローカルイベント を新しいスケジュールリストとする
+    //    (Google側で削除されたイベントは、このリストから自然に除外される)
+    usersData[currentUser].schedules = [...newOrUpdatedSchedules, ...unSyncedLocalSchedules];
+
+    // JSONBinに保存
+    await saveUsersData(usersData);
+
+    // カレンダー表示を更新
+    await updateView();
+
+}
+    // Googleイベントをローカル形式に変換する関数
+    function convertGoogleEventToLocal(event) {
+        const start = new Date(event.start.dateTime || event.start.date);
+        const end = new Date(event.end.dateTime || event.end.date);
+
+        return {
+            date: start.toISOString().split('T')[0],          // YYYY-MM-DD
+            startTime: start.toTimeString().substring(0, 5),   // HH:mm
+            endTime: end.toTimeString().substring(0, 5),       // HH:mm
+            text: event.summary || '',
+            googleEventId: event.id // 重要な変更: Google Event IDを追加
+        };
+    }
+
+    // Googleカレンダーからイベントを取得する関数
+    async function fetchGoogleEvents() {
+        if (!accessToken) return alert('まずGoogleにログインしてください');
+
+        await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+        gapi.client.setToken({ access_token: accessToken });
+
+        const response = await gapi.client.calendar.events.list({
+            calendarId: 'primary',
+            timeMin: (new Date(0)).toISOString(),  // 過去すべてのイベント
+            timeMax: (new Date(2100, 0, 1)).toISOString(),  // 将来すべてのイベント
+            showDeleted: false,
+            singleEvents: true,
+            orderBy: 'startTime'
+        });
+
+        return response.result.items; // イベント配列を返す
+    }
     // --- データ保存・読み込み (変更なし) ---
     async function getUsersData() {
         try {
@@ -594,7 +657,7 @@ async function fetchGoogleEvents() {
         const dayElem = createDayElement(currentDate);
         drawTimeSlots(dayElem.body); // (script1)
         schedules
-            .filter(s => s.date === currentDate.toISOString().split('T')[0])
+            .filter(s => s.date === getLocalDateString(currentDate))
             .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
             .forEach(s => dayElem.body.appendChild(createScheduleItem(s))); // (script1: createScheduleItemは絶対配置対応)
         scheduleElements.calendarView.appendChild(dayElem.element);
@@ -607,7 +670,7 @@ async function fetchGoogleEvents() {
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
         scheduleElements.calendarTitle.textContent = `${formatDate(start, { month: 'long', day: 'numeric' })} - ${formatDate(end, { month: 'long', day: 'numeric' })}`;
-        
+
         scheduleElements.calendarView.className = 'week-view';
 
         // ★ 曜日ヘッダー (script.js)
@@ -621,19 +684,19 @@ async function fetchGoogleEvents() {
         headerHtml += '</div>';
 
         // ★ 日付グリッド (script.js)
-        let gridHtml = '<div class="calendar-grid">'; 
+        let gridHtml = '<div class="calendar-grid">';
         for (let i = 0; i < 7; i++) {
             const day = new Date(start);
             day.setDate(start.getDate() + i);
-            const dayElem = createDayElement(day); 
+            const dayElem = createDayElement(day);
 
             // スケジュール描画ロジック (script1互換)
             const body = document.createElement('div');
             schedules
-                .filter(s => s.date === day.toISOString().split('T')[0])
+                .filter(s => s.date === getLocalDateString(day))
                 .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => body.appendChild(createScheduleItem(s))); // (script1: createScheduleItem呼び出し)
-            
+
             dayElem.element.querySelector('.calendar-day-body').innerHTML = body.innerHTML;
             gridHtml += dayElem.element.outerHTML;
         }
@@ -645,8 +708,8 @@ async function fetchGoogleEvents() {
     // (マージ: script.js の 日曜始まり + 祝日ヘッダー対応)
     function renderMonthView(schedules) {
         scheduleElements.calendarTitle.textContent = formatDate(currentDate, { year: 'numeric', month: 'long' });
-        
-        scheduleElements.calendarView.className = 'month-view'; 
+
+        scheduleElements.calendarView.className = 'month-view';
 
         const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const startDay = new Date(firstDay);
@@ -667,17 +730,17 @@ async function fetchGoogleEvents() {
         for (let i = 0; i < 42; i++) {
             const day = new Date(startDay);
             day.setDate(startDay.getDate() + i);
-            const dayElem = createDayElement(day); 
+            const dayElem = createDayElement(day);
 
             if (day.getMonth() !== currentDate.getMonth()) dayElem.element.classList.add('other-month');
 
             // スケジュール描画ロジック (script1互換)
             const body = document.createElement('div');
             schedules
-                .filter(s => s.date === day.toISOString().split('T')[0])
+                .filter(s => s.date === getLocalDateString(day))
                 .sort((a, b) => (a.startTime || a.time).localeCompare(b.startTime || b.time))
                 .forEach(s => body.appendChild(createScheduleItem(s))); // (script1: createScheduleItem呼び出し)
-            
+
             dayElem.element.querySelector('.calendar-day-body').innerHTML = body.innerHTML;
             gridHtml += dayElem.element.outerHTML;
         }
@@ -745,20 +808,20 @@ async function fetchGoogleEvents() {
 
         // ★ 曜日クラスは日付の「数字」に適用 (script.js)
         const dayClass = getDayClassName(date);
-        
+
         let headerStyle = '';
         let dayNumber;
 
         if (currentView === 'month') {
             headerStyle = 'style="text-align: left; padding: 5px; border-bottom: none;"';
             // ★ 1日表示ロジック (script.js)
-            dayNumber = (date.getDate() === 1 && !element.classList.contains('other-month')) 
-                              ? `${date.getMonth() + 1}/${date.getDate()}` 
-                              : date.getDate();
+            dayNumber = (date.getDate() === 1 && !element.classList.contains('other-month'))
+                ? `${date.getMonth() + 1}/${date.getDate()}`
+                : date.getDate();
         } else { // week or day
             dayNumber = date.getDate();
         }
-        
+
         // ★ headerに曜日は含めず、日付の数字(span)に色クラスを適用 (script.js)
         element.innerHTML = `<div class="calendar-day-header" ${headerStyle}>
                                 <span class="${dayClass}">${dayNumber}</span>
@@ -838,12 +901,12 @@ async function fetchGoogleEvents() {
             // 内閣府の祝日CSVデータ(Shift_JIS)を利用
             const response = await fetch('https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv');
             if (!response.ok) throw new Error('Network response was not ok');
-            
+
             const sjisText = await response.arrayBuffer();
             // Shift_JISからUTF-8にデコード
             const decoder = new TextDecoder('shift_jis');
             const csvText = decoder.decode(sjisText);
-            
+
             const lines = csvText.split('\n');
             const holidaySet = new Set();
             // 1行目(ヘッダー)をスキップ
@@ -867,7 +930,7 @@ async function fetchGoogleEvents() {
     }
 
     const getDayClassName = (day) => {
-        const dateStr = day.toISOString().split('T')[0];
+        const dateStr = getLocalDateString(day);
         const dayIndex = day.getDay();
         if (holidays.has(dateStr) || dayIndex === 0) return 'sunday'; // 日曜・祝日
         if (dayIndex === 6) return 'saturday'; // 土曜
@@ -954,18 +1017,18 @@ async function fetchGoogleEvents() {
         buttons.weekView.addEventListener('click', () => { currentView = 'week'; updateView(); });
         buttons.monthView.addEventListener('click', () => { currentView = 'month'; updateView(); });
 
-buttons.googleSync.addEventListener('click', async () => {
-    if (!accessToken) {
-        if (gisInited) tokenClient.requestAccessToken({ prompt: 'consent' });
-        return;
-    }
+        buttons.googleSync.addEventListener('click', async () => {
+            if (!accessToken) {
+                if (gisInited) tokenClient.requestAccessToken({ prompt: 'consent' });
+                return;
+            }
 
-    // Google → ローカル
-    await syncFromGoogleToLocal();
+            // Google → ローカル
+            await syncFromGoogleToLocal();
 
-    // ローカル → Google
-    await syncSchedulesToGoogle();
-});
+            // ローカル → Google
+            await syncSchedulesToGoogle();
+        });
 
         // ▼▼▼ お問い合わせ機能 (script1) ▼▼▼
         buttons.contact.addEventListener('click', () => {
@@ -1346,7 +1409,7 @@ buttons.googleSync.addEventListener('click', async () => {
     // --- 初期化 (祝日ロード・Google APIロード安定化) ---
     async function initializeApp() {
         setupEventListeners();
-        
+
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
